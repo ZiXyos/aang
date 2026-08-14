@@ -57,3 +57,31 @@ describe('avatar behavior library', () => {
     expect(behavior.sequences[0].blink).not.toBe(base.sequences[0].blink)
   })
 })
+
+import {
+  materialsFromColors,
+  materialColour,
+  BODY_MATERIAL_ID,
+  EYES_MATERIAL_ID,
+  WIRE_MATERIAL_ID,
+} from '@/features/avatar/avatars'
+
+describe('materials derived from avatar colours', () => {
+  it('derives a body, eyes and wire material from AvatarColors', () => {
+    const materials = materialsFromColors({ body: '#c53b47', eyes: '#ffffff' })
+    expect(materials.find(material => material.id === BODY_MATERIAL_ID)?.colour).toBe('#c53b47')
+    expect(materials.find(material => material.id === EYES_MATERIAL_ID)?.colour).toBe('#ffffff')
+    expect(materials.find(material => material.id === WIRE_MATERIAL_ID)).toBeDefined()
+  })
+
+  it('gives every derived material the tint treatment', () => {
+    const materials = materialsFromColors({ body: '#c53b47', eyes: '#ffffff' })
+    materials.forEach(material => expect(material.treatment).toBe('tint'))
+  })
+
+  it('looks up a material colour by id, falling back when missing', () => {
+    const materials = materialsFromColors({ body: '#c53b47', eyes: '#ffffff' })
+    expect(materialColour(materials, BODY_MATERIAL_ID, '#000000')).toBe('#c53b47')
+    expect(materialColour(materials, 'unknown', '#000000')).toBe('#000000')
+  })
+})
