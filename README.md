@@ -146,7 +146,7 @@ Geometry, playback, document operations, and the standalone runtime remain frame
 | `src/i18n/`                              | Localized interface copy and translation tests.                          |
 | `src/lib/`                               | Small shared utilities without product-domain ownership.                 |
 | `scripts/generate-standalone-engine.mjs` | Standalone-engine generator.                                             |
-| `docs/adr/`                              | Accepted architecture decisions.                                         |
+| `docs/adr/`                              | Architecture decisions, accepted and proposed.                           |
 | `legacy/`                                | Self-contained HTML prototypes that preceded the React application.      |
 
 ## Persistence and privacy

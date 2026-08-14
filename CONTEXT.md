@@ -75,4 +75,5 @@ manipulation pauses it.
 The complete Studio document is persisted in browser local storage. JSON project export/import is the
 portable backup mechanism. There is no remote backend in this repository.
 
-Accepted architecture decisions live under `docs/adr/`.
+Architecture decisions live under `docs/adr/`. Each records its status; only those marked Accepted
+describe current behavior.
