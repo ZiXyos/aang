@@ -52,6 +52,30 @@ export const defaultAvatarEyes: AvatarEyeDefaults = {
   leftAngle: defaultExpression.leftAngle,
   rightAngle: defaultExpression.rightAngle,
 }
+
+export type MaterialTreatment = 'contour' | 'tint' | 'none'
+export type Material = { id: string; colour: string; treatment: MaterialTreatment }
+
+export const BODY_MATERIAL_ID = 'body'
+export const EYES_MATERIAL_ID = 'eyes'
+export const WIRE_MATERIAL_ID = 'wire'
+const WIRE_MATERIAL_COLOUR = '#c9d5ff'
+
+/**
+ * Derives a render-only materials registry from the avatar's persisted colours.
+ * This is deliberately not stored on the document (see the 2026-08-14
+ * material-based-shading design spec): AvatarColors stays the single authored
+ * source of truth, materials are what the tint pipeline reads at render time.
+ */
+export const materialsFromColors = (colors: AvatarColors): Material[] => [
+  { id: BODY_MATERIAL_ID, colour: colors.body, treatment: 'tint' },
+  { id: EYES_MATERIAL_ID, colour: colors.eyes, treatment: 'tint' },
+  { id: WIRE_MATERIAL_ID, colour: WIRE_MATERIAL_COLOUR, treatment: 'tint' },
+]
+
+export const materialColour = (materials: Material[], id: string, fallback: string): string =>
+  materials.find(material => material.id === id)?.colour ?? fallback
+
 const hexColor = /^#[0-9a-f]{6}$/i
 const parseColors = (value: unknown): AvatarColors => {
   const candidate = value as Partial<AvatarColors> | null
