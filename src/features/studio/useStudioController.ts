@@ -166,7 +166,7 @@ export function useStudioController() {
   const initialExpression = expressions[0] ?? defaultExpression
   const [expression, setExpression] = useState<Expression>({ ...initialExpression })
   const initialDisplayColors = resolveColors(initialExpression, initialAvatar.colors)
-  const [light] = useState<Light>(() => defaultLight)
+  const [light, setLight] = useState<Light>(() => defaultLight)
   const [deleteAvatarOpen, setDeleteAvatarOpen] = useState(false)
   const [deleteExpressionOpen, setDeleteExpressionOpen] = useState(false)
   const [deleteSequenceOpen, setDeleteSequenceOpen] = useState(false)
@@ -410,6 +410,18 @@ export function useStudioController() {
           )
         : { x: 0, y: 0 }
     )
+  }
+
+  const updateLight = (next: Light) => {
+    setLight(next)
+    const geometry = renderAvatar(displayedPose.current, surfaceRef.current, blinkValue.get(), {
+      includeWire: showWireRef.current || highlightRef.current === 'head',
+      bodyNodes: bodyNodesRef.current,
+      light: next,
+    })
+    paintRenderedScene(renderedScene, geometry)
+    latestGeometryRef.current = geometry
+    repaintTintedColors()
   }
 
   useMotionValueEvent(blinkValue, 'change', latest => paintPose(displayedPose.current, latest))
@@ -1752,6 +1764,7 @@ export function useStudioController() {
     highlight,
     language,
     launchSequence,
+    light,
     linked,
     mode,
     openExpressionEditor,
@@ -1838,6 +1851,7 @@ export function useStudioController() {
     updateAvatarEyes,
     updateDimension,
     updateHighlight,
+    updateLight,
     updateImmediate,
     updateNodeVector,
     updateSelectedBodyNode,
