@@ -584,17 +584,18 @@ input {
 .snapshot-settings-separator {
   margin-block: 14px;
 }
-.avatar-head,
 .preview-head {
   fill: var(--avatar-body-color, #5b7fe5);
 }
-.avatar-eye,
 .preview-eye {
   fill: var(--avatar-eye-color, #111316);
 }
 .avatar-head,
-.avatar-eye {
-  transition: fill 420ms cubic-bezier(0.22, 1, 0.36, 1);
+.avatar-eye,
+.wire {
+  transition:
+    fill 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    stroke 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .avatar-eye {
   cursor: pointer;
@@ -753,8 +754,8 @@ input {
 }
 .wire {
   fill: none;
-  stroke: rgb(255 255 255 / 28%);
   stroke-width: 1;
+  stroke-opacity: 0.28;
   vector-effect: non-scaling-stroke;
 }
 

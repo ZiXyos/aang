@@ -41,7 +41,11 @@ import {
 import { type SurfaceConfig } from '@/features/avatar/surfaces'
 import { type CanvasPreviewTarget } from '@/features/rendering/canvasPreview'
 import { type RenderedRotationGizmo } from '@/features/rendering/renderedRotationGizmo'
-import { findBodyNodePath, type RenderedScene } from '@/features/rendering/renderedScene'
+import {
+  findBodyNodePath,
+  type RenderedColors,
+  type RenderedScene,
+} from '@/features/rendering/renderedScene'
 export function RotationGizmo({
   expression,
   rendered,
@@ -471,6 +475,7 @@ export function AvatarCanvas({
   avatarEyes,
   surface,
   scene,
+  colors,
   rotationGizmo,
   showWire,
   bodyEditing,
@@ -495,6 +500,7 @@ export function AvatarCanvas({
   avatarEyes: AvatarEyeDefaults
   surface: SurfaceConfig
   scene: RenderedScene
+  colors: RenderedColors
   rotationGizmo: RenderedRotationGizmo
   showWire: boolean
   bodyEditing: boolean
@@ -530,6 +536,7 @@ export function AvatarCanvas({
     offsetX,
     offsetY,
   } = scene
+  const { headFill, backFills, frontFills, eyeFill, wireStrokes } = colors
   const svgRef = useRef<SVGSVGElement>(null)
   const [activeDragType, setActiveDragType] = useState<
     'arcball' | 'width' | 'height' | 'size' | 'spacing' | 'rotate' | null
@@ -774,6 +781,7 @@ export function AvatarCanvas({
           {backPaths.map((pathValue, index) => (
             <motion.path
               className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
+              style={{ fill: backFills[index] }}
               d={pathValue}
               key={index}
               onPointerDown={event => selectBodyPath(event, backNodeIds.current[index])}
@@ -781,6 +789,7 @@ export function AvatarCanvas({
           ))}
           <motion.path
             className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
+            style={{ fill: headFill }}
             d={headPath}
             onPointerDown={event => {
               onBodyNodeSelect('primary')
@@ -790,16 +799,23 @@ export function AvatarCanvas({
           <g clipPath="url(#avatar-head-clip)">
             {(showWire || highlight === 'head') &&
               wirePaths.map((pathValue, index) => (
-                <motion.path className="wire" d={pathValue} key={index} />
+                <motion.path
+                  className="wire"
+                  style={{ stroke: wireStrokes[index] }}
+                  d={pathValue}
+                  key={index}
+                />
               ))}
             <motion.path
               className={`avatar-eye ${selectedSide === -1 || highlight === 'left' || highlight === 'both' ? 'cyan-outline' : ''}`}
+              style={{ fill: eyeFill }}
               d={leftPath}
               opacity={leftOpacity}
               onPointerDown={event => selectEye(-1, event)}
             />
             <motion.path
               className={`avatar-eye ${selectedSide === 1 || highlight === 'right' || highlight === 'both' ? 'cyan-outline' : ''}`}
+              style={{ fill: eyeFill }}
               d={rightPath}
               opacity={rightOpacity}
               onPointerDown={event => selectEye(1, event)}
@@ -808,6 +824,7 @@ export function AvatarCanvas({
           {frontPaths.map((pathValue, index) => (
             <motion.path
               className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
+              style={{ fill: frontFills[index] }}
               d={pathValue}
               key={index}
               onPointerDown={event => selectBodyPath(event, frontNodeIds.current[index])}

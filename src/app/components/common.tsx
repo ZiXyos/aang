@@ -80,15 +80,15 @@ export function SnapshotPreview({
         )}
         <motion.g style={{ x: scene.offsetX, y: scene.offsetY }}>
           {scene.backPaths.map((pathValue, index) => (
-            <motion.path d={pathValue} fill={colors.body} key={`back-${index}`} />
+            <motion.path d={pathValue} fill={colors.backFills[index]} key={`back-${index}`} />
           ))}
-          <motion.path d={scene.headPath} fill={colors.body} />
+          <motion.path d={scene.headPath} fill={colors.headFill} />
           <g clipPath={`url(#${clipId})`}>
-            <motion.path d={scene.leftPath} fill={colors.eyes} opacity={scene.leftOpacity} />
-            <motion.path d={scene.rightPath} fill={colors.eyes} opacity={scene.rightOpacity} />
+            <motion.path d={scene.leftPath} fill={colors.eyeFill} opacity={scene.leftOpacity} />
+            <motion.path d={scene.rightPath} fill={colors.eyeFill} opacity={scene.rightOpacity} />
           </g>
           {scene.frontPaths.map((pathValue, index) => (
-            <motion.path d={pathValue} fill={colors.body} key={`front-${index}`} />
+            <motion.path d={pathValue} fill={colors.frontFills[index]} key={`front-${index}`} />
           ))}
         </motion.g>
       </svg>

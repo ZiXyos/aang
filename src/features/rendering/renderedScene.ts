@@ -1,8 +1,15 @@
 import { motionValue, type MotionValue } from 'motion'
 
-import type { AvatarColors } from '../avatar/avatars'
+import {
+  BODY_MATERIAL_ID,
+  EYES_MATERIAL_ID,
+  WIRE_MATERIAL_ID,
+  materialColour,
+  type Material,
+} from '../avatar/avatars'
 import { MAX_BODY_NODES } from '../avatar/body'
 import type { AvatarGeometry } from '../avatar/geometry'
+import { tintColor } from './materialTint'
 
 export type RenderedScene = {
   headPath: MotionValue<string>
@@ -20,8 +27,11 @@ export type RenderedScene = {
 }
 
 export type RenderedColors = {
-  body: MotionValue<string>
-  eyes: MotionValue<string>
+  headFill: MotionValue<string>
+  backFills: MotionValue<string>[]
+  frontFills: MotionValue<string>[]
+  eyeFill: MotionValue<string>
+  wireStrokes: MotionValue<string>[]
 }
 
 const bodyPathSlots = MAX_BODY_NODES + 2
@@ -45,14 +55,67 @@ export const createRenderedScene = (geometry: AvatarGeometry): RenderedScene => 
   wirePaths: geometry.wirePaths.map(path => motionValue(path)),
 })
 
-export const createRenderedColors = (colors: AvatarColors): RenderedColors => ({
-  body: motionValue(colors.body),
-  eyes: motionValue(colors.eyes),
+const tintedBodyColour = (materials: Material[], light: number) =>
+  tintColor(materialColour(materials, BODY_MATERIAL_ID, '#5b7fe5'), light)
+
+export const createRenderedColors = (
+  materials: Material[],
+  geometry: AvatarGeometry
+): RenderedColors => ({
+  headFill: motionValue(tintedBodyColour(materials, geometry.headLight)),
+  backFills: Array.from({ length: bodyPathSlots }, (_, index) =>
+    motionValue(
+      geometry.backLight[index] !== undefined
+        ? tintedBodyColour(materials, geometry.backLight[index])
+        : ''
+    )
+  ),
+  frontFills: Array.from({ length: bodyPathSlots }, (_, index) =>
+    motionValue(
+      geometry.frontLight[index] !== undefined
+        ? tintedBodyColour(materials, geometry.frontLight[index])
+        : ''
+    )
+  ),
+  eyeFill: motionValue(
+    tintColor(materialColour(materials, EYES_MATERIAL_ID, '#111316'), geometry.headLight)
+  ),
+  wireStrokes: geometry.wirePaths.map(() =>
+    motionValue(
+      tintColor(materialColour(materials, WIRE_MATERIAL_ID, '#c9d5ff'), geometry.wireLight)
+    )
+  ),
 })
 
-export const paintRenderedColors = (rendered: RenderedColors, colors: AvatarColors) => {
-  rendered.body.set(colors.body)
-  rendered.eyes.set(colors.eyes)
+export const paintRenderedColors = (
+  rendered: RenderedColors,
+  materials: Material[],
+  geometry: AvatarGeometry
+) => {
+  rendered.headFill.set(tintedBodyColour(materials, geometry.headLight))
+  rendered.backFills.forEach((fill, index) =>
+    fill.set(
+      geometry.backLight[index] !== undefined
+        ? tintedBodyColour(materials, geometry.backLight[index])
+        : ''
+    )
+  )
+  rendered.frontFills.forEach((fill, index) =>
+    fill.set(
+      geometry.frontLight[index] !== undefined
+        ? tintedBodyColour(materials, geometry.frontLight[index])
+        : ''
+    )
+  )
+  rendered.eyeFill.set(
+    tintColor(materialColour(materials, EYES_MATERIAL_ID, '#111316'), geometry.headLight)
+  )
+  rendered.wireStrokes.forEach((stroke, index) => {
+    if (index >= geometry.wirePaths.length) return
+    stroke.set(
+      tintColor(materialColour(materials, WIRE_MATERIAL_ID, '#c9d5ff'), geometry.wireLight)
+    )
+  })
 }
 
 export const paintRenderedOffset = (scene: RenderedScene, offset: { x: number; y: number }) => {

@@ -49,6 +49,7 @@ import {
   cloneAvatarBehavior,
   createAvatar,
   defaultAvatarEyes,
+  materialsFromColors,
   resolveAvatarBehavior,
   type AvatarBehaviorLibrary,
   type AvatarColors,
@@ -71,10 +72,12 @@ import {
   expressionFields,
   poseFromExpression,
   renderAvatar,
+  type AvatarGeometry,
   type AvatarPose,
   type Expression,
 } from '@/features/avatar/geometry'
 import { defaultExpression } from '@/features/avatar/presets'
+import { defaultLight, type Light } from '@/features/avatar/light'
 import { type SurfaceConfig } from '@/features/avatar/surfaces'
 import {
   avatarExportFileName,
@@ -163,10 +166,7 @@ export function useStudioController() {
   const initialExpression = expressions[0] ?? defaultExpression
   const [expression, setExpression] = useState<Expression>({ ...initialExpression })
   const initialDisplayColors = resolveColors(initialExpression, initialAvatar.colors)
-  const [renderedColors] = useState(() => createRenderedColors(initialDisplayColors))
-  const setDisplayColors = (next: AvatarColors) => {
-    paintRenderedColors(renderedColors, next)
-  }
+  const [light] = useState<Light>(() => defaultLight)
   const [deleteAvatarOpen, setDeleteAvatarOpen] = useState(false)
   const [deleteExpressionOpen, setDeleteExpressionOpen] = useState(false)
   const [deleteSequenceOpen, setDeleteSequenceOpen] = useState(false)
@@ -275,7 +275,7 @@ export function useStudioController() {
         poseWithAvatarEyes(initialExpression, initialAvatar.eyes),
         surface,
         1,
-        { bodyNodes }
+        { bodyNodes, light }
       ),
     }
   })
@@ -322,6 +322,25 @@ export function useStudioController() {
   const blinkValue = useMotionValue(1)
   const [renderedScene] = useState(() => createRenderedScene(initialGeometry))
   const [renderedRotationGizmo] = useState(() => createRenderedRotationGizmo(initialExpression))
+  const [renderedColors] = useState(() =>
+    createRenderedColors(materialsFromColors(initialDisplayColors), initialGeometry)
+  )
+  const latestGeometryRef = useRef<AvatarGeometry>(initialGeometry)
+  const bodyColorDriver = useMotionValue(initialDisplayColors.body)
+  const eyeColorDriver = useMotionValue(initialDisplayColors.eyes)
+  const repaintTintedColors = () => {
+    paintRenderedColors(
+      renderedColors,
+      materialsFromColors({ body: bodyColorDriver.get(), eyes: eyeColorDriver.get() }),
+      latestGeometryRef.current
+    )
+  }
+  useMotionValueEvent(bodyColorDriver, 'change', repaintTintedColors)
+  useMotionValueEvent(eyeColorDriver, 'change', repaintTintedColors)
+  const setDisplayColors = (next: AvatarColors) => {
+    bodyColorDriver.set(next.body)
+    eyeColorDriver.set(next.eyes)
+  }
   const bodyColorAnimation = useRef<ReturnType<typeof animate> | null>(null)
   const eyeColorAnimation = useRef<ReturnType<typeof animate> | null>(null)
 
@@ -376,8 +395,11 @@ export function useStudioController() {
       includeWire: showWireRef.current || highlightRef.current === 'head',
       bodyNodes: bodyNodesRef.current,
       eyeOffset,
+      light,
     })
     paintRenderedScene(renderedScene, geometry)
+    latestGeometryRef.current = geometry
+    repaintTintedColors()
     paintRenderedOffset(
       renderedScene,
       bodyAmbientEnabled
@@ -515,8 +537,8 @@ export function useStudioController() {
       lastAmbientStrength.current = 0
       const from = { ...current }
       const fromColors = {
-        body: renderedColors.body.get(),
-        eyes: renderedColors.eyes.get(),
+        body: bodyColorDriver.get(),
+        eyes: eyeColorDriver.get(),
       }
       const targetColors = avatar ? resolveColors(next, avatar.colors) : fromColors
       let startedAt: number | null = null
@@ -576,13 +598,20 @@ export function useStudioController() {
 
     if (avatar) {
       const targetColors = resolveColors(next, avatar.colors)
-      bodyColorAnimation.current = animate(renderedColors.body, targetColors.body, {
+      const startColors = { body: bodyColorDriver.get(), eyes: eyeColorDriver.get() }
+      bodyColorAnimation.current = animate(0, 1, {
         duration: 0.35,
         ease: 'easeInOut',
+        onUpdate: progress => {
+          bodyColorDriver.set(interpolateHexColor(startColors.body, targetColors.body, progress))
+        },
       })
-      eyeColorAnimation.current = animate(renderedColors.eyes, targetColors.eyes, {
+      eyeColorAnimation.current = animate(0, 1, {
         duration: 0.35,
         ease: 'easeInOut',
+        onUpdate: progress => {
+          eyeColorDriver.set(interpolateHexColor(startColors.eyes, targetColors.eyes, progress))
+        },
       })
     }
 
@@ -1247,20 +1276,21 @@ export function useStudioController() {
     }
     if (bodyEditing) {
       paintRenderedRotationGizmo(renderedRotationGizmo, next)
-      paintRenderedScene(
-        renderedScene,
-        renderAvatar(
-          poseFromExpression(
-            resolveCanvasPreviewExpression(next, activeAvatarEyes, bodyEditing, target)
-          ),
-          surfaceRef.current,
-          blinkValue.get(),
-          {
-            includeWire: showWireRef.current || highlightRef.current === 'head',
-            bodyNodes: bodyNodesRef.current,
-          }
-        )
+      const previewGeometry = renderAvatar(
+        poseFromExpression(
+          resolveCanvasPreviewExpression(next, activeAvatarEyes, bodyEditing, target)
+        ),
+        surfaceRef.current,
+        blinkValue.get(),
+        {
+          includeWire: showWireRef.current || highlightRef.current === 'head',
+          bodyNodes: bodyNodesRef.current,
+          light,
+        }
       )
+      paintRenderedScene(renderedScene, previewGeometry)
+      latestGeometryRef.current = previewGeometry
+      repaintTintedColors()
       return
     }
     const avatar = avatarsRef.current.find(item => item.id === activeAvatarIdRef.current)
@@ -1513,8 +1543,8 @@ export function useStudioController() {
       activeAvatar.name,
       renderedScene,
       {
-        body: renderedColors.body.get(),
-        eyes: renderedColors.eyes.get(),
+        body: bodyColorDriver.get(),
+        eyes: eyeColorDriver.get(),
       },
       {
         background: snapshotBackground,
