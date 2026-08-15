@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 
 import type { PixelRenderStyle } from '@/features/avatar/avatars'
 import { paintPixelAvatar, type PixelAvatarFrame } from '@/features/rendering/pixelRenderer'
-import type { RenderedColors, RenderedScene } from '@/features/rendering/renderedScene'
+import type { RenderedPalette, RenderedScene } from '@/features/rendering/renderedScene'
 
 export function StaticPixelAvatarCanvas({
   frame,
@@ -29,12 +29,12 @@ export function StaticPixelAvatarCanvas({
 
 export function LivePixelAvatarCanvas({
   scene,
-  colors,
+  palette,
   style,
   className,
 }: {
   scene: RenderedScene
-  colors: RenderedColors
+  palette: RenderedPalette
   style: PixelRenderStyle
   className: string
 }) {
@@ -69,8 +69,8 @@ export function LivePixelAvatarCanvas({
           rightOpacity: scene.rightOpacity.get(),
           offsetX: scene.offsetX.get(),
           offsetY: scene.offsetY.get(),
-          bodyColor: colors.body.get(),
-          eyeColor: colors.eyes.get(),
+          bodyColor: palette.body.get(),
+          eyeColor: palette.eyes.get(),
         },
         style
       )
@@ -88,8 +88,8 @@ export function LivePixelAvatarCanvas({
       scene.rightOpacity,
       scene.offsetX,
       scene.offsetY,
-      colors.body,
-      colors.eyes,
+      palette.body,
+      palette.eyes,
     ]
     const unsubscribers = values.map(value => value.on('change', schedulePaint))
     paint()
@@ -97,7 +97,7 @@ export function LivePixelAvatarCanvas({
       unsubscribers.forEach(unsubscribe => unsubscribe())
       if (frameRequest !== null) cancelAnimationFrame(frameRequest)
     }
-  }, [colors, scene, style])
+  }, [palette, scene, style])
 
   return <canvas ref={canvasRef} className={className} aria-hidden="true" />
 }

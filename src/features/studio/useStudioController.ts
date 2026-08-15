@@ -106,6 +106,7 @@ import {
   paintRenderedColors,
   paintRenderedOffset,
   paintRenderedScene,
+  type RenderedPalette,
 } from '@/features/rendering/renderedScene'
 import { paintPixelAvatar } from '@/features/rendering/pixelRenderer'
 import {
@@ -331,6 +332,7 @@ export function useStudioController() {
   const latestGeometryRef = useRef<AvatarGeometry>(initialGeometry)
   const bodyColorDriver = useMotionValue(initialDisplayColors.body)
   const eyeColorDriver = useMotionValue(initialDisplayColors.eyes)
+  const renderedPalette: RenderedPalette = { body: bodyColorDriver, eyes: eyeColorDriver }
   const repaintTintedColors = () => {
     paintRenderedColors(
       renderedColors,
@@ -1628,8 +1630,8 @@ export function useStudioController() {
         rightOpacity: renderedScene.rightOpacity.get(),
         offsetX: renderedScene.offsetX.get(),
         offsetY: renderedScene.offsetY.get(),
-        bodyColor: renderedColors.body.get(),
-        eyeColor: renderedColors.eyes.get(),
+        bodyColor: bodyColorDriver.get(),
+        eyeColor: eyeColorDriver.get(),
       },
       renderStyle
     )
@@ -1873,6 +1875,7 @@ export function useStudioController() {
     reduceMotion,
     renameActiveAvatar,
     renderedColors,
+    renderedPalette,
     renderedRotationGizmo,
     renderedScene,
     saveAvatarEditing,

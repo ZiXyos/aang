@@ -26,6 +26,16 @@ export type RenderedScene = {
   wirePaths: MotionValue<string>[]
 }
 
+/**
+ * The avatar's two untinted palette colours. The pixel renderer quantizes every
+ * pixel to exactly one of these, so it needs the flat palette rather than the
+ * per-part tinted fills in RenderedColors.
+ */
+export type RenderedPalette = {
+  body: MotionValue<string>
+  eyes: MotionValue<string>
+}
+
 export type RenderedColors = {
   headFill: MotionValue<string>
   backFills: MotionValue<string>[]

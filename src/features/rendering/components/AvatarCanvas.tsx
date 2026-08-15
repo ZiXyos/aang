@@ -55,6 +55,7 @@ import { type RenderedRotationGizmo } from '@/features/rendering/renderedRotatio
 import {
   findBodyNodePath,
   type RenderedColors,
+  type RenderedPalette,
   type RenderedScene,
 } from '@/features/rendering/renderedScene'
 export function RotationGizmo({
@@ -245,24 +246,22 @@ export function LightGizmo({ light, onChange }: { light: Light; onChange: (next:
         aria-label={t('Direction de la lumière')}
       >
         <circle
-          className="light-gizmo-ring"
+          className="light-gizmo-hitbox"
           cx="0"
           cy="0"
-          r={radius}
+          r={radius + 6}
           onPointerDown={startDrag}
           onPointerMove={move}
           onPointerUp={stop}
           onPointerCancel={stop}
         />
+        <circle className="light-gizmo-ring" cx="0" cy="0" r={radius} pointerEvents="none" />
         <circle
           className="light-gizmo-handle"
           cx={handleX}
           cy={handleY}
           r="4"
-          onPointerDown={startDrag}
-          onPointerMove={move}
-          onPointerUp={stop}
-          onPointerCancel={stop}
+          pointerEvents="none"
         />
       </svg>
       <Button
@@ -553,6 +552,7 @@ export function AvatarCanvas({
   surface,
   scene,
   colors,
+  palette,
   renderStyle,
   light,
   rotationGizmo,
@@ -581,6 +581,7 @@ export function AvatarCanvas({
   surface: SurfaceConfig
   scene: RenderedScene
   colors: RenderedColors
+  palette: RenderedPalette
   renderStyle: AvatarRenderStyle
   light: Light
   rotationGizmo: RenderedRotationGizmo
@@ -848,7 +849,7 @@ export function AvatarCanvas({
       {renderStyle.type === 'pixel' && (
         <LivePixelAvatarCanvas
           scene={scene}
-          colors={colors}
+          palette={palette}
           style={renderStyle}
           className="avatar-pixel-canvas"
         />

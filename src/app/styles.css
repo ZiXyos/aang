@@ -780,8 +780,11 @@ input {
   vector-effect: non-scaling-stroke;
 }
 
+/* Above .avatar (z-index 2), which fills the whole wrap and would otherwise
+   cover these overlay controls. */
 .gizmo-cluster {
   position: absolute;
+  z-index: 3;
   top: 2%;
   right: 2%;
   display: flex;
@@ -835,6 +838,7 @@ input {
 }
 .light-gizmo-cluster {
   position: absolute;
+  z-index: 3;
   bottom: 2%;
   left: 2%;
   display: flex;
@@ -847,24 +851,28 @@ input {
   height: 94px;
   overflow: visible;
 }
+.light-gizmo-hitbox {
+  fill: transparent;
+  cursor: grab;
+  touch-action: none;
+}
+.light-gizmo-hitbox:active {
+  cursor: grabbing;
+}
 .light-gizmo-ring {
   fill: none;
   stroke: rgb(255 255 255 / 20%);
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
-  cursor: pointer;
-  touch-action: none;
 }
 .light-gizmo-handle {
   fill: #f7c948;
   stroke: rgb(24 29 36 / 82%);
   stroke-width: 1.5;
-  cursor: grab;
-  touch-action: none;
   transition: filter 140ms ease;
 }
-.light-gizmo-handle:hover,
-.light-gizmo-handle:active {
+.light-gizmo-hitbox:hover ~ .light-gizmo-handle,
+.light-gizmo-hitbox:active ~ .light-gizmo-handle {
   filter: brightness(1.2);
 }
 .light-gizmo-reset {

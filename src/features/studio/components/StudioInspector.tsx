@@ -141,6 +141,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
     reduceMotion,
     renameActiveAvatar,
     renderedColors,
+    renderedPalette,
     renderedScene,
     saveAvatarEditing,
     saveEditing,
@@ -1779,6 +1780,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
                     <SnapshotPreview
                       scene={renderedScene}
                       colors={renderedColors}
+                      palette={renderedPalette}
                       background={snapshotBackground}
                       colorFrom={snapshotColorFrom}
                       colorTo={snapshotColorTo}

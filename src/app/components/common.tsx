@@ -12,7 +12,11 @@ import { type PlaybackStatus } from '@/app/studio-utils'
 import type { AvatarRenderStyle } from '@/features/avatar/avatars'
 import { type SnapshotBackground } from '@/features/export/snapshotExporter'
 import { LivePixelAvatarCanvas } from '@/features/rendering/components/PixelAvatarCanvas'
-import { type RenderedColors, type RenderedScene } from '@/features/rendering/renderedScene'
+import {
+  type RenderedColors,
+  type RenderedPalette,
+  type RenderedScene,
+} from '@/features/rendering/renderedScene'
 export function ControlSection({
   title,
   subtitle,
@@ -40,6 +44,7 @@ export function ControlSection({
 export function SnapshotPreview({
   scene,
   colors,
+  palette,
   background,
   colorFrom,
   colorTo,
@@ -47,6 +52,7 @@ export function SnapshotPreview({
 }: {
   scene: RenderedScene
   colors: RenderedColors
+  palette: RenderedPalette
   background: SnapshotBackground
   colorFrom: string
   colorTo: string
@@ -79,7 +85,7 @@ export function SnapshotPreview({
       {renderStyle.type === 'pixel' ? (
         <LivePixelAvatarCanvas
           scene={scene}
-          colors={colors}
+          palette={palette}
           style={renderStyle}
           className="avatar-preview"
         />
