@@ -1,6 +1,6 @@
 import { Camera, Info } from 'lucide-react'
 import { motion } from 'motion/react'
-import { type CSSProperties, useState } from 'react'
+import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -48,15 +48,7 @@ export function StudioStage({ controller }: { controller: StudioController }) {
     updateImmediate,
   } = controller
   return (
-    <motion.section
-      className="stage-column"
-      style={
-        {
-          '--avatar-body-color': renderedColors.body,
-          '--avatar-eye-color': renderedColors.eyes,
-        } as CSSProperties
-      }
-    >
+    <motion.section className="stage-column">
       <StudioIdentity
         className="stage-identity"
         language={controller.language}
