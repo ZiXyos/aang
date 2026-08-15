@@ -22,6 +22,7 @@ export function StudioStage({ controller }: { controller: StudioController }) {
     expression,
     freezeLivePreviewForManipulation,
     highlight,
+    light,
     linked,
     mode,
     persistEditedEyeExpression,
@@ -46,6 +47,7 @@ export function StudioStage({ controller }: { controller: StudioController }) {
     transitionToExpression,
     updateHighlight,
     updateImmediate,
+    updateLight,
   } = controller
   return (
     <motion.section className="stage-column">
@@ -62,7 +64,9 @@ export function StudioStage({ controller }: { controller: StudioController }) {
         scene={renderedScene}
         colors={renderedColors}
         renderStyle={activeAvatar.renderStyle}
+        light={light}
         rotationGizmo={renderedRotationGizmo}
+        onLightChange={updateLight}
         showWire={showWire}
         bodyEditing={bodyEditing}
         selectedBodyNodeId={selectedBodyNodeId}

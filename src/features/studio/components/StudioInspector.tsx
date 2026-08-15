@@ -123,6 +123,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
     focusAvatarName,
     language,
     launchSequence,
+    light,
     linked,
     mode,
     openExpressionEditor,
@@ -200,6 +201,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
     updateDimension,
     updateHighlight,
     updateImmediate,
+    updateLight,
     updateNodeVector,
     updateSelectedBodyNode,
     updateSize,
@@ -1341,6 +1343,14 @@ export function StudioInspector({ controller }: { controller: StudioController }
                           step={0.01}
                           unit="×"
                           onChange={value => updateImmediate({ ...expression, perspective: value })}
+                        />
+                        <NumericField
+                          label="Intensité de la lumière"
+                          value={light.intensity}
+                          min={0}
+                          max={1}
+                          step={0.05}
+                          onChange={value => updateLight({ ...light, intensity: value })}
                         />
                         <div className="switch">
                           <span>{t('Afficher le maillage')}</span>

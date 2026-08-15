@@ -833,6 +833,52 @@ input {
 .gizmo-z {
   stroke: #557bea;
 }
+.light-gizmo-cluster {
+  position: absolute;
+  bottom: 2%;
+  left: 2%;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 5px;
+}
+.light-gizmo {
+  width: 94px;
+  height: 94px;
+  overflow: visible;
+}
+.light-gizmo-ring {
+  fill: none;
+  stroke: rgb(255 255 255 / 20%);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
+  touch-action: none;
+}
+.light-gizmo-handle {
+  fill: #f7c948;
+  stroke: rgb(24 29 36 / 82%);
+  stroke-width: 1.5;
+  cursor: grab;
+  touch-action: none;
+  transition: filter 140ms ease;
+}
+.light-gizmo-handle:hover,
+.light-gizmo-handle:active {
+  filter: brightness(1.2);
+}
+.light-gizmo-reset {
+  width: 26px;
+  height: 26px;
+  border-color: rgb(255 255 255 / 12%);
+  background: rgb(24 29 36 / 82%);
+  color: #dbe4f3;
+  backdrop-filter: blur(8px);
+}
+.light-gizmo-reset:hover {
+  background: rgb(46 54 65 / 92%);
+  color: white;
+}
 .axis-key {
   position: absolute;
   right: 4%;

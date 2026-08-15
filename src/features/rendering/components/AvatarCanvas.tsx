@@ -19,6 +19,12 @@ import {
   type AvatarRenderStyle,
 } from '@/features/avatar/avatars'
 import { type BodyNode } from '@/features/avatar/body'
+import {
+  defaultLight,
+  lightFromHandlePosition,
+  lightHandlePosition,
+  type Light,
+} from '@/features/avatar/light'
 import { scaleEye, updateEyeDimension } from '@/features/avatar/expressionEditing'
 import {
   poseFromExpression,
@@ -199,6 +205,72 @@ export function RotationGizmo({
         size="icon-sm"
         aria-label={t('Réinitialiser la rotation de la tête')}
         onClick={onReset}
+      >
+        <RotateCcw />
+      </Button>
+    </div>
+  )
+}
+
+export function LightGizmo({ light, onChange }: { light: Light; onChange: (next: Light) => void }) {
+  const { t } = useStudioLanguage()
+  const radius = 30
+  const dragging = useRef(false)
+  const toLocal = (event: React.PointerEvent<SVGElement>): readonly [number, number] => {
+    const rectangle = event.currentTarget.ownerSVGElement!.getBoundingClientRect()
+    return [
+      ((event.clientX - rectangle.left) / rectangle.width) * 86 - 43,
+      ((event.clientY - rectangle.top) / rectangle.height) * 86 - 43,
+    ]
+  }
+  const startDrag = (event: React.PointerEvent<SVGElement>) => {
+    event.stopPropagation()
+    dragging.current = true
+    event.currentTarget.setPointerCapture(event.pointerId)
+    onChange(lightFromHandlePosition(toLocal(event), light.intensity, radius))
+  }
+  const move = (event: React.PointerEvent<SVGElement>) => {
+    if (!dragging.current) return
+    onChange(lightFromHandlePosition(toLocal(event), light.intensity, radius))
+  }
+  const stop = () => {
+    dragging.current = false
+  }
+  const [handleX, handleY] = lightHandlePosition(light, radius)
+  return (
+    <div className="light-gizmo-cluster">
+      <svg
+        className="light-gizmo"
+        viewBox="-43 -43 86 86"
+        aria-label={t('Direction de la lumière')}
+      >
+        <circle
+          className="light-gizmo-ring"
+          cx="0"
+          cy="0"
+          r={radius}
+          onPointerDown={startDrag}
+          onPointerMove={move}
+          onPointerUp={stop}
+          onPointerCancel={stop}
+        />
+        <circle
+          className="light-gizmo-handle"
+          cx={handleX}
+          cy={handleY}
+          r="4"
+          onPointerDown={startDrag}
+          onPointerMove={move}
+          onPointerUp={stop}
+          onPointerCancel={stop}
+        />
+      </svg>
+      <Button
+        className="light-gizmo-reset"
+        variant="secondary"
+        size="icon-sm"
+        aria-label={t('Réinitialiser la lumière')}
+        onClick={() => onChange(defaultLight)}
       >
         <RotateCcw />
       </Button>
@@ -482,6 +554,7 @@ export function AvatarCanvas({
   scene,
   colors,
   renderStyle,
+  light,
   rotationGizmo,
   showWire,
   bodyEditing,
@@ -499,6 +572,7 @@ export function AvatarCanvas({
   onChange,
   onReset,
   onEyeChange,
+  onLightChange,
   playback,
   onManipulationStart,
 }: {
@@ -508,6 +582,7 @@ export function AvatarCanvas({
   scene: RenderedScene
   colors: RenderedColors
   renderStyle: AvatarRenderStyle
+  light: Light
   rotationGizmo: RenderedRotationGizmo
   showWire: boolean
   bodyEditing: boolean
@@ -525,6 +600,7 @@ export function AvatarCanvas({
   onChange: (next: Expression) => void
   onReset: (next: Expression) => void
   onEyeChange?: (next: Expression) => void
+  onLightChange: (next: Light) => void
   playback: { name: string; status: Exclude<PlaybackStatus, 'stopped'> } | null
   onManipulationStart: () => Expression
 }) {
@@ -897,6 +973,7 @@ export function AvatarCanvas({
         onActiveChange={active => onHighlightChange(active ? 'head' : null)}
         onReset={() => onReset({ ...expression, headX: 0, headY: 0, headZ: 0 })}
       />
+      <LightGizmo light={light} onChange={onLightChange} />
       <div className="axis-key">
         <i className="x" />X <i className="y" />Y <i className="z" />Z
       </div>
