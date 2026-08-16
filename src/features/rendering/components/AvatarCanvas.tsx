@@ -13,7 +13,11 @@ import {
   type Highlight,
   type PlaybackStatus,
 } from '@/app/studio-utils'
-import { applyAvatarEyeDefaults, type AvatarEyeDefaults } from '@/features/avatar/avatars'
+import {
+  applyAvatarEyeDefaults,
+  type AvatarEyeDefaults,
+  type AvatarRenderStyle,
+} from '@/features/avatar/avatars'
 import { type BodyNode } from '@/features/avatar/body'
 import {
   defaultLight,
@@ -46,10 +50,12 @@ import {
 } from '@/features/avatar/manipulationSession'
 import { type SurfaceConfig } from '@/features/avatar/surfaces'
 import { type CanvasPreviewTarget } from '@/features/rendering/canvasPreview'
+import { LivePixelAvatarCanvas } from '@/features/rendering/components/PixelAvatarCanvas'
 import { type RenderedRotationGizmo } from '@/features/rendering/renderedRotationGizmo'
 import {
   findBodyNodePath,
   type RenderedColors,
+  type RenderedPalette,
   type RenderedScene,
 } from '@/features/rendering/renderedScene'
 export function RotationGizmo({
@@ -240,24 +246,22 @@ export function LightGizmo({ light, onChange }: { light: Light; onChange: (next:
         aria-label={t('Direction de la lumière')}
       >
         <circle
-          className="light-gizmo-ring"
+          className="light-gizmo-hitbox"
           cx="0"
           cy="0"
-          r={radius}
+          r={radius + 6}
           onPointerDown={startDrag}
           onPointerMove={move}
           onPointerUp={stop}
           onPointerCancel={stop}
         />
+        <circle className="light-gizmo-ring" cx="0" cy="0" r={radius} pointerEvents="none" />
         <circle
           className="light-gizmo-handle"
           cx={handleX}
           cy={handleY}
           r="4"
-          onPointerDown={startDrag}
-          onPointerMove={move}
-          onPointerUp={stop}
-          onPointerCancel={stop}
+          pointerEvents="none"
         />
       </svg>
       <Button
@@ -548,6 +552,8 @@ export function AvatarCanvas({
   surface,
   scene,
   colors,
+  palette,
+  renderStyle,
   light,
   rotationGizmo,
   showWire,
@@ -575,6 +581,8 @@ export function AvatarCanvas({
   surface: SurfaceConfig
   scene: RenderedScene
   colors: RenderedColors
+  palette: RenderedPalette
+  renderStyle: AvatarRenderStyle
   light: Light
   rotationGizmo: RenderedRotationGizmo
   showWire: boolean
@@ -827,7 +835,7 @@ export function AvatarCanvas({
   }
   useEscapeToCancel(cancelDrag)
   return (
-    <div className="avatar-wrap">
+    <div className={`avatar-wrap${renderStyle.type === 'pixel' ? ' is-pixel-rendered' : ''}`}>
       {playback && (
         <motion.div
           className="stage-playback-status"
@@ -837,6 +845,14 @@ export function AvatarCanvas({
         >
           <PlaybackIdentity name={playback.name} status={playback.status} />
         </motion.div>
+      )}
+      {renderStyle.type === 'pixel' && (
+        <LivePixelAvatarCanvas
+          scene={scene}
+          palette={palette}
+          style={renderStyle}
+          className="avatar-pixel-canvas"
+        />
       )}
       <svg
         ref={svgRef}

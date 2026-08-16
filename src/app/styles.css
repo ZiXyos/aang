@@ -323,12 +323,33 @@ input {
 }
 
 .avatar {
+  position: relative;
+  z-index: 2;
   display: block;
   width: 100%;
   height: 100%;
   overflow: visible;
   cursor: grab;
   touch-action: none;
+}
+.avatar-pixel-canvas {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.is-pixel-rendered .avatar-head,
+.is-pixel-rendered .avatar-eye {
+  fill: transparent;
+  transition: none;
+}
+.is-pixel-rendered .avatar-head.cyan-outline,
+.is-pixel-rendered .avatar-eye.cyan-outline {
+  stroke: #51ddff;
 }
 .avatar:active {
   cursor: grabbing;
@@ -344,7 +365,7 @@ input {
   background: var(--muted);
 }
 
-.export-avatar-summary > svg {
+.export-avatar-summary > .avatar-preview {
   width: 62px;
   height: 62px;
   flex: none;
@@ -560,7 +581,7 @@ input {
     -6px 0;
   background-size: 12px 12px;
 }
-.snapshot-preview svg {
+.snapshot-preview .avatar-preview {
   display: block;
   width: 100%;
   height: 100%;
@@ -759,8 +780,11 @@ input {
   vector-effect: non-scaling-stroke;
 }
 
+/* Above .avatar (z-index 2), which fills the whole wrap and would otherwise
+   cover these overlay controls. */
 .gizmo-cluster {
   position: absolute;
+  z-index: 3;
   top: 2%;
   right: 2%;
   display: flex;
@@ -814,6 +838,7 @@ input {
 }
 .light-gizmo-cluster {
   position: absolute;
+  z-index: 3;
   bottom: 2%;
   left: 2%;
   display: flex;
@@ -826,24 +851,28 @@ input {
   height: 94px;
   overflow: visible;
 }
+.light-gizmo-hitbox {
+  fill: transparent;
+  cursor: grab;
+  touch-action: none;
+}
+.light-gizmo-hitbox:active {
+  cursor: grabbing;
+}
 .light-gizmo-ring {
   fill: none;
   stroke: rgb(255 255 255 / 20%);
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
-  cursor: pointer;
-  touch-action: none;
 }
 .light-gizmo-handle {
   fill: #f7c948;
   stroke: rgb(24 29 36 / 82%);
   stroke-width: 1.5;
-  cursor: grab;
-  touch-action: none;
   transition: filter 140ms ease;
 }
-.light-gizmo-handle:hover,
-.light-gizmo-handle:active {
+.light-gizmo-hitbox:hover ~ .light-gizmo-handle,
+.light-gizmo-hitbox:active ~ .light-gizmo-handle {
   filter: brightness(1.2);
 }
 .light-gizmo-reset {
@@ -1285,7 +1314,7 @@ p {
   background: white;
   box-shadow: 0 3px 10px rgb(24 28 35 / 5%);
 }
-.state-playback-step svg {
+.state-playback-step .avatar-preview {
   width: 100%;
   height: 100%;
 }
@@ -1417,7 +1446,7 @@ p {
 .avatar-shelf .avatar-card:active {
   cursor: grabbing;
 }
-.avatar-shelf .avatar-card svg {
+.avatar-shelf .avatar-card .avatar-preview {
   height: auto;
   min-height: 0;
   flex: 1 1 auto;
@@ -1480,7 +1509,7 @@ p {
   background: #edf1ff;
   color: #4168d5;
 }
-.mobile-avatar-tab > svg {
+.mobile-avatar-tab > .avatar-preview {
   width: 27px;
   height: 27px;
   margin-block: -4px -1px;
@@ -1650,6 +1679,18 @@ p {
 }
 .color-panel {
   position: relative;
+}
+.render-style-field > [data-slot='select-trigger'] {
+  width: 150px;
+}
+.pixel-render-options {
+  display: grid;
+  margin-top: 14px;
+  padding-top: 4px;
+  border-top: 1px solid #eceef2;
+}
+.pixel-render-options .switch {
+  margin-top: 0;
 }
 .inherit-colors {
   position: absolute;
@@ -2113,7 +2154,7 @@ p {
   padding: 7px;
   cursor: pointer;
 }
-.avatar-card svg {
+.avatar-card .avatar-preview {
   display: block;
   width: 100%;
   height: 105px;
@@ -2142,10 +2183,14 @@ p {
   width: 22px;
   height: 22px;
 }
-.expression-card svg {
+.expression-card .avatar-preview {
   display: block;
   width: 100%;
   height: 64px;
+}
+.avatar-preview:is(canvas) {
+  image-rendering: pixelated;
+  object-fit: contain;
 }
 .expression-card > span {
   position: absolute;
