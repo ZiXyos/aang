@@ -6,6 +6,7 @@ import {
   type SurfaceConfig,
 } from './surfaces'
 import type { BodyNode } from './body'
+import { defaultLight, lightDirection, type Light } from './light'
 
 export type Quaternion = readonly [number, number, number, number]
 export type Point3 = readonly [number, number, number]
@@ -57,12 +58,17 @@ export type AvatarGeometry = {
   leftVisible: boolean
   rightVisible: boolean
   wirePaths: string[]
+  headLight: number
+  wireLight: number
+  backLight: number[]
+  frontLight: number[]
 }
 
 export type RenderAvatarOptions = {
   includeWire?: boolean
   bodyNodes?: BodyNode[]
   eyeOffset?: Readonly<{ x: number; y: number }>
+  light?: Light
 }
 
 export type EyeEditorGeometry = {
@@ -1214,14 +1220,42 @@ const accessoryCameraDepthRadius = (pose: AvatarPose, node: BodyNode) => {
   )
 }
 
-const accessoryLayers = (pose: AvatarPose, nodes: BodyNode[]) => {
+// Roughly 2x the primary surface's radius (ADR-0028 cites a head radius of 120),
+// past which a part is considered fully receded regardless of facing.
+const LIGHT_RECEDE_RANGE = 260
+// Past this much embedding into the primary surface, a contact region is at its darkest.
+const LIGHT_CONTACT_RANGE = 80
+
+export const partLightIntensity = (
+  orientation: Point3,
+  light: Light,
+  depth: number,
+  embeddingDepth: number
+): number => {
+  const direction = lightDirection(light)
+  const length = Math.hypot(orientation[0], orientation[1], orientation[2]) || 1
+  const facing =
+    (orientation[0] / length) * direction[0] +
+    (orientation[1] / length) * direction[1] +
+    (orientation[2] / length) * direction[2]
+  const base = (facing + 1) / 2
+  const recede = clamp(1 - Math.abs(depth) / LIGHT_RECEDE_RANGE, 0.6, 1)
+  const contact = clamp(1 - embeddingDepth / LIGHT_CONTACT_RANGE, 0.7, 1)
+  const lit = base * recede * contact
+  return clamp(lit * light.intensity + 0.5 * (1 - light.intensity), 0, 1)
+}
+
+const accessoryLayers = (pose: AvatarPose, nodes: BodyNode[], light: Light) => {
   const layers = nodes
     .map(node => {
-      const depth = rotateWithQuaternion(pose.orientation, node.position)[2]
+      const rotatedPosition = rotateWithQuaternion(pose.orientation, node.position)
+      const depth = rotatedPosition[2]
+      const embeddingDepth = Math.max(0, accessoryCameraDepthRadius(pose, node) - depth)
       return {
         id: node.id,
         path: accessoryPath(pose, node),
         depth,
+        light: partLightIntensity(rotatedPosition, light, depth, embeddingDepth),
         front: depth > accessoryCameraDepthRadius(pose, node) * ACCESSORY_FRONT_CROSSING_RATIO,
       }
     })
@@ -1231,6 +1265,8 @@ const accessoryLayers = (pose: AvatarPose, nodes: BodyNode[]) => {
     frontPaths: layers.filter(layer => layer.front).map(layer => layer.path),
     backNodeIds: layers.filter(layer => !layer.front).map(layer => layer.id),
     frontNodeIds: layers.filter(layer => layer.front).map(layer => layer.id),
+    backLight: layers.filter(layer => !layer.front).map(layer => layer.light),
+    frontLight: layers.filter(layer => layer.front).map(layer => layer.light),
   }
 }
 
@@ -1240,22 +1276,29 @@ export const renderAvatar = (
   blink = 1,
   options: RenderAvatarOptions = {}
 ): AvatarGeometry => {
+  const light = options.light ?? defaultLight
   const leftSamples = eyePoints(pose, surface, -1, blink, options.eyeOffset)
   const rightSamples = eyePoints(pose, surface, 1, blink, options.eyeOffset)
   const left = leftSamples.map(sample => sample.point)
   const right = rightSamples.map(sample => sample.point)
-  const accessories = accessoryLayers(pose, options.bodyNodes ?? [])
+  const accessories = accessoryLayers(pose, options.bodyNodes ?? [], light)
   const compositePaths = compositeBackPaths(pose, surface)
+  const headOrientation = rotateWithQuaternion(pose.orientation, [0, 0, 1] as Point3)
+  const headLight = partLightIntensity(headOrientation, light, headOrientation[2], 0)
   return {
     backPaths: [...compositePaths, ...accessories.backPaths],
     frontPaths: accessories.frontPaths,
     backNodeIds: [...compositePaths.map(() => null), ...accessories.backNodeIds],
     frontNodeIds: accessories.frontNodeIds,
+    backLight: [...compositePaths.map(() => headLight), ...accessories.backLight],
+    frontLight: accessories.frontLight,
     headPath: headPath(pose, surface),
     leftPath: path(left),
     rightPath: path(right),
     leftVisible: leftSamples.reduce((total, sample) => total + sample.normal[2], 0) > 0,
     rightVisible: rightSamples.reduce((total, sample) => total + sample.normal[2], 0) > 0,
     wirePaths: options.includeWire === false ? [] : wirePaths(pose, surface),
+    headLight,
+    wireLight: headLight,
   }
 }

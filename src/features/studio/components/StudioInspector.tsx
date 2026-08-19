@@ -61,7 +61,11 @@ import { ColorField, LinkButton, NumericField } from '@/app/components/controls'
 import { formatSeconds, type Side, type SnapshotFormat } from '@/app/studio-utils'
 import { SequenceWorkspace } from '@/features/animation/components/SequenceWorkspace'
 import { findExpressionIndex, groupSequences } from '@/features/animation/sequences'
-import { defaultAvatarEyes } from '@/features/avatar/avatars'
+import {
+  defaultAvatarEyes,
+  defaultPixelRenderStyle,
+  type AvatarRenderStyle,
+} from '@/features/avatar/avatars'
 import {
   ExpressionCard,
   ExpressionPreview,
@@ -105,6 +109,7 @@ function PoseControls({ controller }: { controller: StudioController }) {
   const {
     activeAvatar,
     expression,
+    light,
     linked,
     setLinked,
     showWire,
@@ -112,6 +117,7 @@ function PoseControls({ controller }: { controller: StudioController }) {
     updateDimension,
     updateHighlight,
     updateImmediate,
+    updateLight,
     updateSize,
     updateSpacing,
     updateWireVisibility,
@@ -381,6 +387,14 @@ function PoseControls({ controller }: { controller: StudioController }) {
             unit="×"
             onChange={value => updateImmediate({ ...expression, perspective: value })}
           />
+          <NumericField
+            label="Intensité de la lumière"
+            value={light.intensity}
+            min={0}
+            max={1}
+            step={0.05}
+            onChange={value => updateLight({ ...light, intensity: value })}
+          />
           <div className="switch">
             <span>{t('Afficher le maillage')}</span>
             <Switch
@@ -528,6 +542,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
     toggleStatePlayback,
     transitionToExpression,
     updateAvatarColors,
+    updateAvatarRenderStyle,
     updateAvatarEyeDimension,
     updateAvatarEyePosition,
     updateAvatarEyeSize,
@@ -546,6 +561,8 @@ export function StudioInspector({ controller }: { controller: StudioController }
     : undefined
   const updateSnapshotComposition = (patch: Partial<typeof snapshotComposition>) =>
     setSnapshotComposition(current => ({ ...current, ...patch }))
+  const pixelRenderStyle =
+    activeAvatar.renderStyle.type === 'pixel' ? activeAvatar.renderStyle : null
   const playbackFooterY = useMotionValue(0)
   const playbackHandleY = useMotionValue(0)
   const playbackHandleCounterY = useTransform(playbackHandleY, value => -value)
@@ -791,17 +808,58 @@ export function StudioInspector({ controller }: { controller: StudioController }
                     </ControlSection>
                     <ControlSection
                       title="Rendu"
-                      subtitle="Le rendu Pixel est temporairement désactivé."
+                      subtitle="Choisis la finition visuelle propre à cet avatar."
                     >
-                      <InspectorCard className="render-style-panel render-style-disabled">
+                      <InspectorCard className="render-style-panel">
                         <PanelTitle
                           level={3}
                           title="Type de rendu"
-                          subtitle="Le mode Vectoriel est utilisé pour l’instant."
+                          subtitle="Pixel utilise une palette franche, sans lissage ni couleur intermédiaire."
                         />
-                        <div className="render-style-status">
-                          <Badge variant="secondary">{t('Vectoriel')}</Badge>
-                        </div>
+                        <Field className="render-style-field" orientation="horizontal">
+                          <FieldTitle>{t('Style')}</FieldTitle>
+                          <Select
+                            value={activeAvatar.renderStyle.type}
+                            items={[
+                              { value: 'vector', label: t('Vectoriel') },
+                              { value: 'pixel', label: t('Pixel') },
+                            ]}
+                            onValueChange={next => {
+                              if (!next) return
+                              const renderStyle: AvatarRenderStyle =
+                                next === 'pixel'
+                                  ? { ...defaultPixelRenderStyle }
+                                  : { type: 'vector' }
+                              updateAvatarRenderStyle(renderStyle)
+                            }}
+                          >
+                            <SelectTrigger aria-label={t('Type de rendu')}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="vector">{t('Vectoriel')}</SelectItem>
+                              <SelectItem value="pixel">{t('Pixel')}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                        {pixelRenderStyle && (
+                          <div className="pixel-render-options">
+                            <NumericField
+                              label="Définition de la grille"
+                              value={pixelRenderStyle.resolution}
+                              min={8}
+                              max={192}
+                              step={8}
+                              unit="px"
+                              onChange={resolution =>
+                                updateAvatarRenderStyle({
+                                  ...pixelRenderStyle,
+                                  resolution: Math.round(resolution),
+                                })
+                              }
+                            />
+                          </div>
+                        )}
                       </InspectorCard>
                     </ControlSection>
                     <ControlSection

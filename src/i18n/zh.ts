@@ -54,8 +54,6 @@ export const chinese: Record<string, string> = {
   Rendu: '渲染',
   'Choisis la finition visuelle propre à cet avatar.': '选择此头像专属的视觉效果。',
   'Type de rendu': '渲染类型',
-  'Le rendu Pixel est temporairement désactivé.': '像素渲染暂时已禁用。',
-  'Le mode Vectoriel est utilisé pour l’instant.': '当前使用矢量渲染。',
   'Pixel utilise une palette franche, sans lissage ni couleur intermédiaire.':
     '像素渲染使用纯色调色板，不进行平滑处理，也不产生中间色。',
   Vectoriel: '矢量',

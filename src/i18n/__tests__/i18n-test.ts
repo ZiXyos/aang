@@ -90,12 +90,6 @@ describe('avatar studio translations', () => {
     expect(translateStudioText('Lancer l’exemple', 'zh-CN')).toBe('运行示例')
     expect(translateStudioText('Guide d’utilisation', 'en')).toBe('Usage guide')
     expect(translateStudioText('Guide d’utilisation', 'zh-CN')).toBe('使用指南')
-    expect(translateStudioText('Le rendu Pixel est temporairement désactivé.', 'en')).toBe(
-      'Pixel rendering is temporarily disabled.'
-    )
-    expect(translateStudioText('Le rendu Pixel est temporairement désactivé.', 'zh-CN')).toBe(
-      '像素渲染暂时已禁用。'
-    )
     expect(translateStudioText('Props de l’avatar', 'en')).toBe('Avatar props')
     expect(translateStudioText('Props de l’avatar', 'zh-CN')).toBe('头像 Props')
     expect(translateStudioText('Cible et lecture', 'en')).toBe('Target and playback')

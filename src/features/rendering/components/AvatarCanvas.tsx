@@ -19,6 +19,12 @@ import {
   type AvatarRenderStyle,
 } from '@/features/avatar/avatars'
 import { type BodyNode } from '@/features/avatar/body'
+import {
+  defaultLight,
+  lightFromHandlePosition,
+  lightHandlePosition,
+  type Light,
+} from '@/features/avatar/light'
 import { scaleEye, updateEyeDimension } from '@/features/avatar/expressionEditing'
 import {
   poseFromExpression,
@@ -49,6 +55,7 @@ import { type RenderedRotationGizmo } from '@/features/rendering/renderedRotatio
 import {
   findBodyNodePath,
   type RenderedColors,
+  type RenderedPalette,
   type RenderedScene,
 } from '@/features/rendering/renderedScene'
 
@@ -216,6 +223,70 @@ export function RotationGizmo({
         size="icon-sm"
         aria-label={t('Réinitialiser la rotation de la tête')}
         onClick={onReset}
+      >
+        <RotateCcw />
+      </Button>
+    </div>
+  )
+}
+
+export function LightGizmo({ light, onChange }: { light: Light; onChange: (next: Light) => void }) {
+  const { t } = useStudioLanguage()
+  const radius = 30
+  const dragging = useRef(false)
+  const toLocal = (event: React.PointerEvent<SVGElement>): readonly [number, number] => {
+    const rectangle = event.currentTarget.ownerSVGElement!.getBoundingClientRect()
+    return [
+      ((event.clientX - rectangle.left) / rectangle.width) * 86 - 43,
+      ((event.clientY - rectangle.top) / rectangle.height) * 86 - 43,
+    ]
+  }
+  const startDrag = (event: React.PointerEvent<SVGElement>) => {
+    event.stopPropagation()
+    dragging.current = true
+    event.currentTarget.setPointerCapture(event.pointerId)
+    onChange(lightFromHandlePosition(toLocal(event), light.intensity, radius))
+  }
+  const move = (event: React.PointerEvent<SVGElement>) => {
+    if (!dragging.current) return
+    onChange(lightFromHandlePosition(toLocal(event), light.intensity, radius))
+  }
+  const stop = () => {
+    dragging.current = false
+  }
+  const [handleX, handleY] = lightHandlePosition(light, radius)
+  return (
+    <div className="light-gizmo-cluster">
+      <svg
+        className="light-gizmo"
+        viewBox="-43 -43 86 86"
+        aria-label={t('Direction de la lumière')}
+      >
+        <circle
+          className="light-gizmo-hitbox"
+          cx="0"
+          cy="0"
+          r={radius + 6}
+          onPointerDown={startDrag}
+          onPointerMove={move}
+          onPointerUp={stop}
+          onPointerCancel={stop}
+        />
+        <circle className="light-gizmo-ring" cx="0" cy="0" r={radius} pointerEvents="none" />
+        <circle
+          className="light-gizmo-handle"
+          cx={handleX}
+          cy={handleY}
+          r="4"
+          pointerEvents="none"
+        />
+      </svg>
+      <Button
+        className="light-gizmo-reset"
+        variant="secondary"
+        size="icon-sm"
+        aria-label={t('Réinitialiser la lumière')}
+        onClick={() => onChange(defaultLight)}
       >
         <RotateCcw />
       </Button>
@@ -498,7 +569,9 @@ export function AvatarCanvas({
   surface,
   scene,
   colors,
+  palette,
   renderStyle,
+  light,
   rotationGizmo,
   showWire,
   bodyEditing,
@@ -516,6 +589,7 @@ export function AvatarCanvas({
   onChange,
   onReset,
   onEyeChange,
+  onLightChange,
   playback,
   onManipulationStart,
 }: {
@@ -524,7 +598,9 @@ export function AvatarCanvas({
   surface: SurfaceConfig
   scene: RenderedScene
   colors: RenderedColors
+  palette: RenderedPalette
   renderStyle: AvatarRenderStyle
+  light: Light
   rotationGizmo: RenderedRotationGizmo
   showWire: boolean
   bodyEditing: boolean
@@ -542,6 +618,7 @@ export function AvatarCanvas({
   onChange: (next: Expression) => void
   onReset: (next: Expression) => void
   onEyeChange?: (next: Expression) => void
+  onLightChange: (next: Light) => void
   playback: { name: string; status: Exclude<PlaybackStatus, 'stopped'> } | null
   onManipulationStart: () => Expression
 }) {
@@ -560,6 +637,7 @@ export function AvatarCanvas({
     offsetX,
     offsetY,
   } = scene
+  const { headFill, backFills, frontFills, eyeFill, wireStrokes } = colors
   const svgRef = useRef<SVGSVGElement>(null)
   const [activeDragType, setActiveDragType] = useState<
     'arcball' | 'width' | 'height' | 'size' | 'spacing' | 'rotate' | null
@@ -788,7 +866,7 @@ export function AvatarCanvas({
       {renderStyle.type === 'pixel' && (
         <LivePixelAvatarCanvas
           scene={scene}
-          colors={colors}
+          palette={palette}
           style={renderStyle}
           className="avatar-pixel-canvas"
         />
@@ -812,6 +890,7 @@ export function AvatarCanvas({
           {backPaths.map((pathValue, index) => (
             <motion.path
               className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
+              style={{ fill: backFills[index] }}
               d={pathValue}
               key={index}
               onPointerDown={event => selectBodyPath(event, backNodeIds.current[index])}
@@ -819,6 +898,7 @@ export function AvatarCanvas({
           ))}
           <motion.path
             className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
+            style={{ fill: headFill }}
             d={headPath}
             onPointerDown={event => {
               onBodyNodeSelect('primary')
@@ -828,16 +908,23 @@ export function AvatarCanvas({
           <g clipPath="url(#avatar-head-clip)">
             {(showWire || highlight === 'head') &&
               wirePaths.map((pathValue, index) => (
-                <motion.path className="wire" d={pathValue} key={index} />
+                <motion.path
+                  className="wire"
+                  style={{ stroke: wireStrokes[index] }}
+                  d={pathValue}
+                  key={index}
+                />
               ))}
             <motion.path
               className={`avatar-eye ${selectedSide === -1 || highlight === 'left' || highlight === 'both' ? 'cyan-outline' : ''}`}
+              style={{ fill: eyeFill }}
               d={leftPath}
               opacity={leftOpacity}
               onPointerDown={event => selectEye(-1, event)}
             />
             <motion.path
               className={`avatar-eye ${selectedSide === 1 || highlight === 'right' || highlight === 'both' ? 'cyan-outline' : ''}`}
+              style={{ fill: eyeFill }}
               d={rightPath}
               opacity={rightOpacity}
               onPointerDown={event => selectEye(1, event)}
@@ -846,6 +933,7 @@ export function AvatarCanvas({
           {frontPaths.map((pathValue, index) => (
             <motion.path
               className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
+              style={{ fill: frontFills[index] }}
               d={pathValue}
               key={index}
               onPointerDown={event => selectBodyPath(event, frontNodeIds.current[index])}
@@ -904,6 +992,7 @@ export function AvatarCanvas({
         onActiveChange={active => onHighlightChange(active ? 'head' : null)}
         onReset={() => onReset({ ...expression, headX: 0, headY: 0, headZ: 0 })}
       />
+      <LightGizmo light={light} onChange={onLightChange} />
       <div className="axis-key">
         <i className="x" />X <i className="y" />Y <i className="z" />Z
       </div>

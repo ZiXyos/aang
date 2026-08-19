@@ -1,4 +1,5 @@
 import { createBodyNode } from '@/features/avatar/body'
+import { materialsFromColors } from '@/features/avatar/avatars'
 import { renderAvatar, poseFromExpression } from '@/features/avatar/geometry'
 import { defaultExpression } from '@/features/avatar/presets'
 import {
@@ -36,16 +37,48 @@ describe('rendered avatar scene', () => {
   })
 
   it('updates animated colors without replacing their motion values', () => {
-    const colors = createRenderedColors({ body: '#5b7fe5', eyes: '#111316' })
-    const body = colors.body
-    const eyes = colors.eyes
+    const node = createBodyNode('sphere', 0)
+    const geometry = renderAvatar(poseFromExpression(defaultExpression), surfacePresets.sphere, 1, {
+      bodyNodes: [node],
+    })
+    const materials = materialsFromColors({ body: '#5b7fe5', eyes: '#111316' })
+    const colors = createRenderedColors(materials, geometry)
+    const headFill = colors.headFill
+    const eyeFill = colors.eyeFill
+    const headFillValueBefore = headFill.get()
 
-    paintRenderedColors(colors, { body: '#c53b47', eyes: '#ffffff' })
+    const brighterMaterials = materialsFromColors({ body: '#c53b47', eyes: '#ffffff' })
+    paintRenderedColors(colors, brighterMaterials, geometry)
 
-    expect(colors.body).toBe(body)
-    expect(colors.eyes).toBe(eyes)
-    expect(colors.body.get()).toBe('#c53b47')
-    expect(colors.eyes.get()).toBe('#ffffff')
+    expect(colors.headFill).toBe(headFill)
+    expect(colors.eyeFill).toBe(eyeFill)
+    expect(colors.headFill.get()).not.toBe(headFillValueBefore)
+  })
+
+  it('tints each accessory fill independently based on its own light value', () => {
+    const facingNode = { ...createBodyNode('sphere', 0), position: [0, 0, 90] as const }
+    const awayNode = { ...createBodyNode('sphere', 1), position: [0, 0, -90] as const }
+    const geometry = renderAvatar(poseFromExpression(defaultExpression), surfacePresets.sphere, 1, {
+      bodyNodes: [facingNode, awayNode],
+      light: { azimuth: 0, elevation: 0, intensity: 1 },
+    })
+    const materials = materialsFromColors({ body: '#5b7fe5', eyes: '#111316' })
+    const colors = createRenderedColors(materials, geometry)
+    const allFills = [...colors.backFills, ...colors.frontFills].map(fill => fill.get())
+    expect(new Set(allFills.filter(Boolean)).size).toBeGreaterThan(1)
+  })
+
+  it('gives the wireframe a tinted stroke instead of a hardcoded colour', () => {
+    const geometry = renderAvatar(
+      poseFromExpression(defaultExpression),
+      surfacePresets.sphere,
+      1,
+      {}
+    )
+    const materials = materialsFromColors({ body: '#5b7fe5', eyes: '#111316' })
+    const colors = createRenderedColors(materials, geometry)
+    expect(colors.wireStrokes.length).toBe(geometry.wirePaths.length)
+    colors.wireStrokes.forEach(stroke => expect(stroke.get()).toMatch(/^#[0-9a-f]{6}$/i))
   })
 
   it('keeps Cloudee accessories behind the eyes at expression position 05', () => {

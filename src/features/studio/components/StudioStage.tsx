@@ -1,6 +1,6 @@
 import { Camera, Info, Move3D, RotateCcw, Scan } from 'lucide-react'
 import { motion } from 'motion/react'
-import { type CSSProperties, useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -24,6 +24,7 @@ export function StudioStage({ controller }: { controller: StudioController }) {
     expression,
     freezeLivePreviewForManipulation,
     highlight,
+    light,
     linked,
     mode,
     openPhotoMode,
@@ -35,6 +36,7 @@ export function StudioStage({ controller }: { controller: StudioController }) {
     previewExpressionDraft,
     previewSelectedBodyNode,
     renderedColors,
+    renderedPalette,
     renderedRotationGizmo,
     renderedScene,
     selectBodyNode,
@@ -57,6 +59,7 @@ export function StudioStage({ controller }: { controller: StudioController }) {
     transitionToExpression,
     updateHighlight,
     updateImmediate,
+    updateLight,
   } = controller
   const photoMode = mode === 'photo'
   const activatePhotoTool = (tool: typeof photoTool) => {
@@ -74,8 +77,11 @@ export function StudioStage({ controller }: { controller: StudioController }) {
       surface={surface}
       scene={renderedScene}
       colors={renderedColors}
+      palette={renderedPalette}
       renderStyle={activeAvatar.renderStyle}
+      light={light}
       rotationGizmo={renderedRotationGizmo}
+      onLightChange={updateLight}
       showWire={showWire}
       bodyEditing={bodyEditing}
       selectedBodyNodeId={selectedBodyNodeId}
@@ -112,8 +118,8 @@ export function StudioStage({ controller }: { controller: StudioController }) {
       className={`stage-column${photoMode ? ' photo-mode-active' : ''}`}
       style={
         {
-          '--avatar-body-color': renderedColors.body,
-          '--avatar-eye-color': renderedColors.eyes,
+          '--avatar-body-color': renderedPalette.body,
+          '--avatar-eye-color': renderedPalette.eyes,
         } as CSSProperties
       }
     >

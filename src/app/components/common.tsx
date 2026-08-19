@@ -17,7 +17,12 @@ import {
   type SnapshotComposition,
 } from '@/features/export/snapshotComposition'
 import { LivePixelAvatarCanvas } from '@/features/rendering/components/PixelAvatarCanvas'
-import { type RenderedColors, type RenderedScene } from '@/features/rendering/renderedScene'
+import {
+  type RenderedColors,
+  type RenderedPalette,
+  type RenderedScene,
+} from '@/features/rendering/renderedScene'
+
 export function ControlSection({
   title,
   subtitle,
@@ -45,6 +50,7 @@ export function ControlSection({
 export function SnapshotPreview({
   scene,
   colors,
+  palette,
   background,
   colorFrom,
   colorTo,
@@ -54,6 +60,7 @@ export function SnapshotPreview({
 }: {
   scene: RenderedScene
   colors: RenderedColors
+  palette: RenderedPalette
   background: SnapshotBackground
   colorFrom: string
   colorTo: string
@@ -231,7 +238,7 @@ export function SnapshotPreview({
         >
           <LivePixelAvatarCanvas
             scene={scene}
-            colors={colors}
+            palette={palette}
             style={renderStyle}
             className="avatar-preview"
           />
@@ -267,19 +274,27 @@ export function SnapshotPreview({
             <g ref={compositionGroupRef}>
               <motion.g style={{ x: scene.offsetX, y: scene.offsetY }}>
                 {scene.backPaths.map((pathValue, index) => (
-                  <motion.path d={pathValue} fill={colors.body} key={`back-${index}`} />
+                  <motion.path d={pathValue} fill={colors.backFills[index]} key={`back-${index}`} />
                 ))}
-                <motion.path d={scene.headPath} fill={colors.body} />
+                <motion.path d={scene.headPath} fill={colors.headFill} />
                 <g clipPath={`url(#${clipId})`}>
-                  <motion.path d={scene.leftPath} fill={colors.eyes} opacity={scene.leftOpacity} />
+                  <motion.path
+                    d={scene.leftPath}
+                    fill={colors.eyeFill}
+                    opacity={scene.leftOpacity}
+                  />
                   <motion.path
                     d={scene.rightPath}
-                    fill={colors.eyes}
+                    fill={colors.eyeFill}
                     opacity={scene.rightOpacity}
                   />
                 </g>
                 {scene.frontPaths.map((pathValue, index) => (
-                  <motion.path d={pathValue} fill={colors.body} key={`front-${index}`} />
+                  <motion.path
+                    d={pathValue}
+                    fill={colors.frontFills[index]}
+                    key={`front-${index}`}
+                  />
                 ))}
               </motion.g>
             </g>

@@ -1183,13 +1183,15 @@ input {
 .preview-head {
   fill: var(--avatar-body-color, #5b7fe5);
 }
-.avatar-eye,
 .preview-eye {
   fill: var(--avatar-eye-color, #111316);
 }
 .avatar-head,
-.avatar-eye {
-  transition: fill 420ms cubic-bezier(0.22, 1, 0.36, 1);
+.avatar-eye,
+.wire {
+  transition:
+    fill 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    stroke 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .avatar-eye {
   cursor: pointer;
@@ -1348,11 +1350,13 @@ input {
 }
 .wire {
   fill: none;
-  stroke: rgb(255 255 255 / 28%);
   stroke-width: 1;
+  stroke-opacity: 0.28;
   vector-effect: non-scaling-stroke;
 }
 
+/* Above .avatar (z-index 2), which fills the whole wrap and would otherwise
+   cover these overlay controls. */
 .gizmo-cluster {
   position: absolute;
   z-index: 4;
@@ -1406,6 +1410,57 @@ input {
 }
 .gizmo-z {
   stroke: #557bea;
+}
+.light-gizmo-cluster {
+  position: absolute;
+  z-index: 3;
+  bottom: 2%;
+  left: 2%;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 5px;
+}
+.light-gizmo {
+  width: 94px;
+  height: 94px;
+  overflow: visible;
+}
+.light-gizmo-hitbox {
+  fill: transparent;
+  cursor: grab;
+  touch-action: none;
+}
+.light-gizmo-hitbox:active {
+  cursor: grabbing;
+}
+.light-gizmo-ring {
+  fill: none;
+  stroke: rgb(255 255 255 / 20%);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.light-gizmo-handle {
+  fill: #f7c948;
+  stroke: rgb(24 29 36 / 82%);
+  stroke-width: 1.5;
+  transition: filter 140ms ease;
+}
+.light-gizmo-hitbox:hover ~ .light-gizmo-handle,
+.light-gizmo-hitbox:active ~ .light-gizmo-handle {
+  filter: brightness(1.2);
+}
+.light-gizmo-reset {
+  width: 26px;
+  height: 26px;
+  border-color: rgb(255 255 255 / 12%);
+  background: rgb(24 29 36 / 82%);
+  color: #dbe4f3;
+  backdrop-filter: blur(8px);
+}
+.light-gizmo-reset:hover {
+  background: rgb(46 54 65 / 92%);
+  color: white;
 }
 .axis-key {
   position: absolute;
@@ -2632,14 +2687,6 @@ p {
 }
 .render-style-field > [data-slot='select-trigger'] {
   width: 150px;
-}
-.render-style-disabled {
-  display: grid;
-  gap: 12px;
-}
-.render-style-status {
-  display: flex;
-  justify-content: flex-start;
 }
 .pixel-render-options {
   display: grid;

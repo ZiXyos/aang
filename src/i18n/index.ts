@@ -85,8 +85,6 @@ const english: Record<string, string> = {
   'Choisis la finition visuelle propre à cet avatar.':
     'Choose the visual finish specific to this avatar.',
   'Type de rendu': 'Rendering type',
-  'Le rendu Pixel est temporairement désactivé.': 'Pixel rendering is temporarily disabled.',
-  'Le mode Vectoriel est utilisé pour l’instant.': 'Vector rendering is currently used.',
   'Pixel utilise une palette franche, sans lissage ni couleur intermédiaire.':
     'Pixel uses a hard palette, with no smoothing or intermediate colors.',
   Vectoriel: 'Vector',
