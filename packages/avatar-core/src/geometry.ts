@@ -6,7 +6,8 @@ import {
   type SurfaceConfig,
 } from './surfaces'
 import type { BodyNode } from './body'
-import { defaultLight, lightDirection, type Light } from './light'
+import { defaultLight, lightDirection, lightScalar, type Light } from './light'
+import { fitPartShading, type PartShading, type ShadingSample } from './shading'
 
 export type Quaternion = readonly [number, number, number, number]
 export type Point3 = readonly [number, number, number]
@@ -62,6 +63,15 @@ export type AvatarGeometry = {
   wireLight: number
   backLight: number[]
   frontLight: number[]
+  /** Per-part light gradients, present when requested via RenderAvatarOptions.shading. */
+  shading?: AvatarShading
+}
+
+/** Gradients aligned with headPath, backPaths and frontPaths. */
+export type AvatarShading = {
+  head: PartShading
+  back: PartShading[]
+  front: PartShading[]
 }
 
 export type RenderAvatarOptions = {
@@ -69,6 +79,8 @@ export type RenderAvatarOptions = {
   bodyNodes?: BodyNode[]
   eyeOffset?: Readonly<{ x: number; y: number }>
   light?: Light
+  /** Fit a light gradient per part (studio preview); off by default for runtimes. */
+  shading?: boolean
 }
 
 export type EyeEditorGeometry = {
@@ -511,7 +523,10 @@ const HEAD_LONGITUDE_SAMPLES = 73
 const PRIMITIVE_RING_SAMPLES = 144
 const ROUNDED_PRIMITIVE_LATITUDE_SAMPLES = 33
 const ROUNDED_PRIMITIVE_LONGITUDE_SAMPLES = 73
+const SHADING_LATITUDE_SAMPLES = 10
+const SHADING_LONGITUDE_SAMPLES = 20
 const headSamplesCache = new Map<string, Point3[]>()
+const shadingSamplesCache = new Map<string, { sample: LocalSurfacePoint; area: number }[]>()
 const accessorySamplesCache = new Map<string, Point3[]>()
 const wireSamplesCache = new Map<string, LocalSurfacePoint[][]>()
 
@@ -1238,24 +1253,111 @@ export const partLightIntensity = (
     (orientation[0] / length) * direction[0] +
     (orientation[1] / length) * direction[1] +
     (orientation[2] / length) * direction[2]
-  const base = (facing + 1) / 2
-  const recede = clamp(1 - Math.abs(depth) / LIGHT_RECEDE_RANGE, 0.6, 1)
-  const contact = clamp(1 - embeddingDepth / LIGHT_CONTACT_RANGE, 0.7, 1)
-  const lit = base * recede * contact
-  return clamp(lit * light.intensity + 0.5 * (1 - light.intensity), 0, 1)
+  return lightScalar(facing, light, lightAttenuation(depth, embeddingDepth))
 }
 
-const accessoryLayers = (pose: AvatarPose, nodes: BodyNode[], light: Light) => {
+const lightAttenuation = (depth: number, embeddingDepth: number) =>
+  clamp(1 - Math.abs(depth) / LIGHT_RECEDE_RANGE, 0.6, 1) *
+  clamp(1 - embeddingDepth / LIGHT_CONTACT_RANGE, 0.7, 1)
+
+// A lat/long grid sampled at cell midpoints; each sample carries the cell's
+// relative surface area so poles do not dominate the fit.
+const shadingSamples = (surface: SurfaceConfig) => {
+  const key = surfaceCacheKey(surface)
+  const cached = shadingSamplesCache.get(key)
+  if (cached) return cached
+  const samples = Array.from({ length: SHADING_LATITUDE_SAMPLES }, (_, latitudeIndex) => {
+    const latitude = -Math.PI / 2 + ((latitudeIndex + 0.5) / SHADING_LATITUDE_SAMPLES) * Math.PI
+    return Array.from({ length: SHADING_LONGITUDE_SAMPLES }, (_, longitudeIndex) => {
+      const longitude =
+        -Math.PI + ((longitudeIndex + 0.5) / SHADING_LONGITUDE_SAMPLES) * Math.PI * 2
+      return { sample: surfaceSampleAt(surface, longitude, latitude), area: Math.cos(latitude) }
+    })
+  }).flat()
+  return cacheSurfaceValue(shadingSamplesCache, key, samples)
+}
+
+// orientation maps the part's local frame to view space; offset is the part's
+// already-rotated origin.
+const partShading = (
+  pose: AvatarPose,
+  surface: SurfaceConfig,
+  orientation: Quaternion,
+  offset: Point3,
+  light: Light,
+  attenuation: number,
+  fallback: number
+): PartShading => {
+  const outline: (readonly [number, number])[] = []
+  const visible: ShadingSample[] = []
+  for (const { sample, area } of shadingSamples(surface)) {
+    const rotated = rotateWithQuaternion(orientation, sample.point)
+    const projected = project(
+      [rotated[0] + offset[0], rotated[1] + offset[1], rotated[2] + offset[2]],
+      pose.expression.perspective
+    )
+    const screen = [projected[0], projected[1]] as const
+    outline.push(screen)
+    const normal = rotateWithQuaternion(orientation, sample.normal)
+    if (normal[2] > 0) visible.push({ screen, normal, weight: area * normal[2] })
+  }
+  return fitPartShading(visible, outline, light, attenuation, fallback)
+}
+
+const headShading = (pose: AvatarPose, surface: SurfaceConfig, light: Light, fallback: number) =>
+  partShading(pose, surface, pose.orientation, [0, 0, 0], light, 1, fallback)
+
+const accessoryShading = (
+  pose: AvatarPose,
+  node: BodyNode,
+  rotatedPosition: Point3,
+  light: Light,
+  attenuation: number,
+  fallback: number
+) => {
+  const localOrientation = quaternionFromEuler(
+    radians(node.rotation[0]),
+    radians(node.rotation[1]),
+    radians(node.rotation[2])
+  )
+  return partShading(
+    pose,
+    node.surface,
+    multiplyQuaternions(pose.orientation, localOrientation),
+    rotatedPosition,
+    light,
+    attenuation,
+    fallback
+  )
+}
+
+const accessoryLayers = (
+  pose: AvatarPose,
+  nodes: BodyNode[],
+  light: Light,
+  includeShading: boolean
+) => {
   const layers = nodes
     .map(node => {
       const rotatedPosition = rotateWithQuaternion(pose.orientation, node.position)
       const depth = rotatedPosition[2]
       const embeddingDepth = Math.max(0, accessoryCameraDepthRadius(pose, node) - depth)
+      const partLight = partLightIntensity(rotatedPosition, light, depth, embeddingDepth)
       return {
         id: node.id,
         path: accessoryPath(pose, node),
         depth,
-        light: partLightIntensity(rotatedPosition, light, depth, embeddingDepth),
+        light: partLight,
+        shading: includeShading
+          ? accessoryShading(
+              pose,
+              node,
+              rotatedPosition,
+              light,
+              lightAttenuation(depth, embeddingDepth),
+              partLight
+            )
+          : null,
         front: depth > accessoryCameraDepthRadius(pose, node) * ACCESSORY_FRONT_CROSSING_RATIO,
       }
     })
@@ -1267,6 +1369,8 @@ const accessoryLayers = (pose: AvatarPose, nodes: BodyNode[], light: Light) => {
     frontNodeIds: layers.filter(layer => layer.front).map(layer => layer.id),
     backLight: layers.filter(layer => !layer.front).map(layer => layer.light),
     frontLight: layers.filter(layer => layer.front).map(layer => layer.light),
+    backShading: layers.filter(layer => !layer.front).map(layer => layer.shading),
+    frontShading: layers.filter(layer => layer.front).map(layer => layer.shading),
   }
 }
 
@@ -1281,10 +1385,13 @@ export const renderAvatar = (
   const rightSamples = eyePoints(pose, surface, 1, blink, options.eyeOffset)
   const left = leftSamples.map(sample => sample.point)
   const right = rightSamples.map(sample => sample.point)
-  const accessories = accessoryLayers(pose, options.bodyNodes ?? [], light)
+  const accessories = accessoryLayers(pose, options.bodyNodes ?? [], light, !!options.shading)
   const compositePaths = compositeBackPaths(pose, surface)
   const headOrientation = rotateWithQuaternion(pose.orientation, [0, 0, 1] as Point3)
   const headLight = partLightIntensity(headOrientation, light, headOrientation[2], 0)
+  // Composite paths (Mickey ears, the cursor tip) belong to the primary surface,
+  // so they continue the head's gradient rather than fitting their own.
+  const head = options.shading ? headShading(pose, surface, light, headLight) : null
   return {
     backPaths: [...compositePaths, ...accessories.backPaths],
     frontPaths: accessories.frontPaths,
@@ -1300,5 +1407,17 @@ export const renderAvatar = (
     wirePaths: options.includeWire === false ? [] : wirePaths(pose, surface),
     headLight,
     wireLight: headLight,
+    ...(head
+      ? {
+          shading: {
+            head,
+            back: [
+              ...compositePaths.map(() => head),
+              ...accessories.backShading.filter(shading => shading !== null),
+            ],
+            front: accessories.frontShading.filter(shading => shading !== null),
+          },
+        }
+      : {}),
   }
 }
