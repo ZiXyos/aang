@@ -68,6 +68,37 @@ describe('rendered avatar scene', () => {
     expect(new Set(allFills.filter(Boolean)).size).toBeGreaterThan(1)
   })
 
+  it('paints each part with a light gradient updated in place', () => {
+    const node = createBodyNode('sphere', 0)
+    const render = (headY: number) =>
+      renderAvatar(poseFromExpression({ ...defaultExpression, headY }), surfacePresets.sphere, 1, {
+        bodyNodes: [node],
+        light: { azimuth: 90, elevation: 0, intensity: 1 },
+        shading: true,
+      })
+    const materials = materialsFromColors({ body: '#5b7fe5', eyes: '#111316' })
+    const colors = createRenderedColors(materials, render(0))
+    const headShade = colors.headShade
+    const firstStop = headShade.stops[0].color
+    const stopColors = headShade.stops.map(stop => stop.color.get())
+    expect(new Set(stopColors).size).toBeGreaterThan(1)
+    const focalBefore = headShade.fx.get()
+
+    paintRenderedColors(colors, materials, render(60))
+
+    expect(colors.headShade).toBe(headShade)
+    expect(colors.headShade.stops[0].color).toBe(firstStop)
+    expect(colors.headShade.fx.get()).not.toBe(focalBefore)
+  })
+
+  it('falls back to a uniform gradient for geometry rendered without shading', () => {
+    const geometry = renderAvatar(poseFromExpression(defaultExpression), surfacePresets.sphere, 1)
+    const materials = materialsFromColors({ body: '#5b7fe5', eyes: '#111316' })
+    const colors = createRenderedColors(materials, geometry)
+    const stopColors = colors.headShade.stops.map(stop => stop.color.get())
+    expect(new Set(stopColors)).toEqual(new Set([colors.headFill.get()]))
+  })
+
   it('gives the wireframe a tinted stroke instead of a hardcoded colour', () => {
     const geometry = renderAvatar(
       poseFromExpression(defaultExpression),

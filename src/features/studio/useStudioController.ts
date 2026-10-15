@@ -319,7 +319,7 @@ export function useStudioController() {
         poseWithAvatarEyes(initialExpression, initialAvatar.eyes),
         surface,
         1,
-        { bodyNodes, light }
+        { bodyNodes, light, shading: true }
       ),
     }
   })
@@ -441,6 +441,7 @@ export function useStudioController() {
       bodyNodes: bodyNodesRef.current,
       eyeOffset,
       light,
+      shading: true,
     })
     paintRenderedScene(renderedScene, geometry)
     latestGeometryRef.current = geometry
@@ -463,6 +464,7 @@ export function useStudioController() {
       includeWire: showWireRef.current || highlightRef.current === 'head',
       bodyNodes: bodyNodesRef.current,
       light: next,
+      shading: true,
     })
     paintRenderedScene(renderedScene, geometry)
     latestGeometryRef.current = geometry
@@ -1371,6 +1373,7 @@ export function useStudioController() {
           includeWire: showWireRef.current || highlightRef.current === 'head',
           bodyNodes: bodyNodesRef.current,
           light,
+          shading: true,
         }
       )
       paintRenderedScene(renderedScene, previewGeometry)

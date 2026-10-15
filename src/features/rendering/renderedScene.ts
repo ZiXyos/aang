@@ -9,7 +9,8 @@ import {
 } from '../avatar/avatars'
 import { MAX_BODY_NODES } from '../avatar/body'
 import type { AvatarGeometry } from '../avatar/geometry'
-import { tintColor } from './materialTint'
+import { SHADING_STOP_COUNT, flatShading, type PartShading } from '../avatar/shading'
+import { createTint, tintColor } from './materialTint'
 
 export type RenderedScene = {
   headPath: MotionValue<string>
@@ -36,10 +37,23 @@ export type RenderedPalette = {
   eyes: MotionValue<string>
 }
 
+/** A per-part light gradient, bound to an SVG radialGradient in user space. */
+export type RenderedGradient = {
+  cx: MotionValue<number>
+  cy: MotionValue<number>
+  r: MotionValue<number>
+  fx: MotionValue<number>
+  fy: MotionValue<number>
+  stops: { offset: MotionValue<number>; color: MotionValue<string> }[]
+}
+
 export type RenderedColors = {
   headFill: MotionValue<string>
   backFills: MotionValue<string>[]
   frontFills: MotionValue<string>[]
+  headShade: RenderedGradient
+  backShades: RenderedGradient[]
+  frontShades: RenderedGradient[]
   eyeFill: MotionValue<string>
   wireStrokes: MotionValue<string>[]
 }
@@ -65,43 +79,109 @@ export const createRenderedScene = (geometry: AvatarGeometry): RenderedScene => 
   wirePaths: geometry.wirePaths.map(path => motionValue(path)),
 })
 
+const bodyColour = (materials: Material[]) => materialColour(materials, BODY_MATERIAL_ID, '#5b7fe5')
+
 const tintedBodyColour = (materials: Material[], light: number) =>
-  tintColor(materialColour(materials, BODY_MATERIAL_ID, '#5b7fe5'), light)
+  tintColor(bodyColour(materials), light)
+
+// Geometry rendered without shading still paints a uniform gradient from its flat light.
+const shadingOf = (geometry: AvatarGeometry) => ({
+  head: geometry.shading?.head ?? flatShading([0, 0], 1, geometry.headLight),
+  back: geometry.backLight.map(
+    (light, index) => geometry.shading?.back[index] ?? flatShading([0, 0], 1, light)
+  ),
+  front: geometry.frontLight.map(
+    (light, index) => geometry.shading?.front[index] ?? flatShading([0, 0], 1, light)
+  ),
+})
+
+const createRenderedGradient = (
+  shading: PartShading | undefined,
+  tint: (scalar: number) => string
+): RenderedGradient => ({
+  cx: motionValue(shading?.center[0] ?? 0),
+  cy: motionValue(shading?.center[1] ?? 0),
+  r: motionValue(shading?.radius ?? 1),
+  fx: motionValue(shading?.focal[0] ?? 0),
+  fy: motionValue(shading?.focal[1] ?? 0),
+  stops: Array.from({ length: SHADING_STOP_COUNT }, (_, index) => ({
+    offset: motionValue(shading?.stops[index].offset ?? index / (SHADING_STOP_COUNT - 1)),
+    color: motionValue(shading ? tint(shading.stops[index].value) : ''),
+  })),
+})
+
+const paintRenderedGradient = (
+  rendered: RenderedGradient,
+  shading: PartShading,
+  tint: (scalar: number) => string
+) => {
+  rendered.cx.set(shading.center[0])
+  rendered.cy.set(shading.center[1])
+  rendered.r.set(shading.radius)
+  rendered.fx.set(shading.focal[0])
+  rendered.fy.set(shading.focal[1])
+  rendered.stops.forEach((stop, index) => {
+    stop.offset.set(shading.stops[index].offset)
+    stop.color.set(tint(shading.stops[index].value))
+  })
+}
 
 export const createRenderedColors = (
   materials: Material[],
   geometry: AvatarGeometry
-): RenderedColors => ({
-  headFill: motionValue(tintedBodyColour(materials, geometry.headLight)),
-  backFills: Array.from({ length: bodyPathSlots }, (_, index) =>
-    motionValue(
-      geometry.backLight[index] !== undefined
-        ? tintedBodyColour(materials, geometry.backLight[index])
-        : ''
-    )
-  ),
-  frontFills: Array.from({ length: bodyPathSlots }, (_, index) =>
-    motionValue(
-      geometry.frontLight[index] !== undefined
-        ? tintedBodyColour(materials, geometry.frontLight[index])
-        : ''
-    )
-  ),
-  eyeFill: motionValue(
-    tintColor(materialColour(materials, EYES_MATERIAL_ID, '#111316'), geometry.headLight)
-  ),
-  wireStrokes: geometry.wirePaths.map(() =>
-    motionValue(
-      tintColor(materialColour(materials, WIRE_MATERIAL_ID, '#c9d5ff'), geometry.wireLight)
-    )
-  ),
-})
+): RenderedColors => {
+  const tint = createTint(bodyColour(materials))
+  const shading = shadingOf(geometry)
+  return {
+    headShade: createRenderedGradient(shading.head, tint),
+    backShades: Array.from({ length: bodyPathSlots }, (_, index) =>
+      createRenderedGradient(shading.back[index], tint)
+    ),
+    frontShades: Array.from({ length: bodyPathSlots }, (_, index) =>
+      createRenderedGradient(shading.front[index], tint)
+    ),
+    headFill: motionValue(tintedBodyColour(materials, geometry.headLight)),
+    backFills: Array.from({ length: bodyPathSlots }, (_, index) =>
+      motionValue(
+        geometry.backLight[index] !== undefined
+          ? tintedBodyColour(materials, geometry.backLight[index])
+          : ''
+      )
+    ),
+    frontFills: Array.from({ length: bodyPathSlots }, (_, index) =>
+      motionValue(
+        geometry.frontLight[index] !== undefined
+          ? tintedBodyColour(materials, geometry.frontLight[index])
+          : ''
+      )
+    ),
+    eyeFill: motionValue(
+      tintColor(materialColour(materials, EYES_MATERIAL_ID, '#111316'), geometry.headLight)
+    ),
+    wireStrokes: geometry.wirePaths.map(() =>
+      motionValue(
+        tintColor(materialColour(materials, WIRE_MATERIAL_ID, '#c9d5ff'), geometry.wireLight)
+      )
+    ),
+  }
+}
 
 export const paintRenderedColors = (
   rendered: RenderedColors,
   materials: Material[],
   geometry: AvatarGeometry
 ) => {
+  const tint = createTint(bodyColour(materials))
+  const shading = shadingOf(geometry)
+  paintRenderedGradient(rendered.headShade, shading.head, tint)
+  shading.back.forEach((part, index) => {
+    const gradient = rendered.backShades[index]
+    if (gradient) paintRenderedGradient(gradient, part, tint)
+  })
+  shading.front.forEach((part, index) => {
+    const gradient = rendered.frontShades[index]
+    if (gradient) paintRenderedGradient(gradient, part, tint)
+  })
   rendered.headFill.set(tintedBodyColour(materials, geometry.headLight))
   rendered.backFills.forEach((fill, index) =>
     fill.set(

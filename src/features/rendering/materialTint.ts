@@ -57,8 +57,13 @@ export const oklabToHex = (lab: Oklab): string => linearRgbToHex(oklabToLinearRg
  * holding hue and chroma"). scalar=0 is fully unlit, scalar=1 is fully lit;
  * scalar=0.5 (grazing light) reads close to the authored colour.
  */
-export const tintColor = (hex: string, scalar: number): string => {
+export const tintColor = (hex: string, scalar: number): string => createTint(hex)(scalar)
+
+/** tintColor for one base colour, converting it to OKLab once for many scalars. */
+export const createTint = (hex: string) => {
   const [lightness, a, b] = hexToOklab(hex)
-  const factor = 0.55 + clamp(scalar, 0, 1) * 0.65
-  return oklabToHex([clamp(lightness * factor, 0, 1), a, b])
+  return (scalar: number): string => {
+    const factor = 0.55 + clamp(scalar, 0, 1) * 0.65
+    return oklabToHex([clamp(lightness * factor, 0, 1), a, b])
+  }
 }

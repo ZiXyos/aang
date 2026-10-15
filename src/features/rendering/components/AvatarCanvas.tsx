@@ -1,6 +1,6 @@
 import { RotateCcw } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { useStudioLanguage } from '@/i18n'
@@ -55,9 +55,28 @@ import { type RenderedRotationGizmo } from '@/features/rendering/renderedRotatio
 import {
   findBodyNodePath,
   type RenderedColors,
+  type RenderedGradient,
   type RenderedPalette,
   type RenderedScene,
 } from '@/features/rendering/renderedScene'
+
+function ShadeGradient({ id, gradient }: { id: string; gradient: RenderedGradient }) {
+  return (
+    <motion.radialGradient
+      id={id}
+      gradientUnits="userSpaceOnUse"
+      cx={gradient.cx}
+      cy={gradient.cy}
+      r={gradient.r}
+      fx={gradient.fx}
+      fy={gradient.fy}
+    >
+      {gradient.stops.map((stop, index) => (
+        <motion.stop key={index} offset={stop.offset} stopColor={stop.color} />
+      ))}
+    </motion.radialGradient>
+  )
+}
 
 export function RotationGizmo({
   expression,
@@ -637,7 +656,8 @@ export function AvatarCanvas({
     offsetX,
     offsetY,
   } = scene
-  const { headFill, backFills, frontFills, eyeFill, wireStrokes } = colors
+  const { headShade, backShades, frontShades, eyeFill, wireStrokes } = colors
+  const shadeId = useId().replace(/:/g, '')
   const svgRef = useRef<SVGSVGElement>(null)
   const [activeDragType, setActiveDragType] = useState<
     'arcball' | 'width' | 'height' | 'size' | 'spacing' | 'rotate' | null
@@ -885,12 +905,27 @@ export function AvatarCanvas({
           <clipPath id="avatar-head-clip">
             <motion.path d={headPath} />
           </clipPath>
+          <ShadeGradient id={`${shadeId}-head`} gradient={headShade} />
+          {backShades.map((gradient, index) => (
+            <ShadeGradient
+              key={`back-${index}`}
+              id={`${shadeId}-back-${index}`}
+              gradient={gradient}
+            />
+          ))}
+          {frontShades.map((gradient, index) => (
+            <ShadeGradient
+              key={`front-${index}`}
+              id={`${shadeId}-front-${index}`}
+              gradient={gradient}
+            />
+          ))}
         </defs>
         <motion.g style={{ x: offsetX, y: offsetY }}>
           {backPaths.map((pathValue, index) => (
             <motion.path
               className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
-              style={{ fill: backFills[index] }}
+              fill={`url(#${shadeId}-back-${index})`}
               d={pathValue}
               key={index}
               onPointerDown={event => selectBodyPath(event, backNodeIds.current[index])}
@@ -898,7 +933,7 @@ export function AvatarCanvas({
           ))}
           <motion.path
             className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
-            style={{ fill: headFill }}
+            fill={`url(#${shadeId}-head)`}
             d={headPath}
             onPointerDown={event => {
               onBodyNodeSelect('primary')
@@ -933,7 +968,7 @@ export function AvatarCanvas({
           {frontPaths.map((pathValue, index) => (
             <motion.path
               className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
-              style={{ fill: frontFills[index] }}
+              fill={`url(#${shadeId}-front-${index})`}
               d={pathValue}
               key={index}
               onPointerDown={event => selectBodyPath(event, frontNodeIds.current[index])}

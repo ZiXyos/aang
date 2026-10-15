@@ -24,6 +24,17 @@ export const lightDirection = (light: Light): readonly [number, number, number] 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
 /**
+ * Maps how directly a surface faces the light (the cosine between its normal
+ * and the light direction, -1..1) to the 0..1 scalar the tint consumes.
+ * attenuation (0..1) darkens receded or embedded parts; intensity pulls every
+ * value toward 0.5 (grazing light), so intensity=0 renders the authored colour.
+ */
+export const lightScalar = (facing: number, light: Light, attenuation = 1): number => {
+  const lit = ((clamp(facing, -1, 1) + 1) / 2) * attenuation
+  return clamp(lit * light.intensity + 0.5 * (1 - light.intensity), 0, 1)
+}
+
+/**
  * Maps a light's azimuth/elevation onto a 2D point on a disc of the given
  * radius, for a draggable gizmo: centre = zenith (elevation 90, light from
  * directly above), edge = horizon (elevation 0). Elevation outside [0, 90]
