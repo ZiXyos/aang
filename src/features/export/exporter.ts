@@ -1,9 +1,10 @@
 import { applyAvatarEyeDefaults, type StudioAvatar } from '../avatar/avatars'
 import { avatarDefinitionFileName, type AvatarDefinition } from '@bible-strong/avatar-core'
 import type { Expression } from '../avatar/geometry'
+import { defaultExpression } from '../avatar/presets'
 import { translateStudioText, type StudioLanguage } from '../../i18n'
 import { proceduralBrowserRuntime } from './proceduralBrowserRuntime'
-import type { AvatarSequence } from '../animation/sequences'
+import { NEUTRAL_EXPRESSION_ID, type AvatarSequence } from '../animation/sequences'
 import { standaloneEngineSource } from './standaloneEngine.generated'
 import { createStoredZip } from './storedZip'
 
@@ -60,7 +61,10 @@ export const createAvatarExportPayload = (
   )
   const exportedExpressions = Object.fromEntries(
     [...referencedIds].flatMap(expressionId => {
-      const expression = expressionById.get(expressionId)
+      const expression =
+        expressionId === NEUTRAL_EXPRESSION_ID
+          ? defaultExpression
+          : expressionById.get(expressionId)
       if (!expression) return []
       const { semanticKey: _semanticKey, ...legacyExpression } = applyAvatarEyeDefaults(
         expression,

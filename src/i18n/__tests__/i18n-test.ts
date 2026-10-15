@@ -68,6 +68,12 @@ describe('avatar studio translations', () => {
     expect(translateStudioText('Guide d’utilisation de l’avatar JavaScript', 'en')).toBe(
       'JavaScript avatar usage guide'
     )
+    expect(translateStudioText('Copier les instructions pour l’IA', 'en')).toBe(
+      'Copy instruction for AI'
+    )
+    expect(translateStudioText('Copier les instructions pour l’IA', 'zh-CN')).toBe(
+      '复制 AI 使用说明'
+    )
     expect(translateStudioText('Preview de la définition exportée', 'en')).toBe(
       'Exported definition preview'
     )
