@@ -19,18 +19,6 @@ export type PartShading = {
   center: readonly [number, number]
   radius: number
   stops: ShadingStop[]
-  highlight: PartHighlight
-}
-
-/**
- * A soft, wide highlight centred on the part's brightest point, as a fraction of
- * the part's projected size. Renderers fade it out radially.
- */
-export type PartHighlight = {
-  center: readonly [number, number]
-  radius: number
-  /** 0..1, already scaled by light intensity and part attenuation. */
-  strength: number
 }
 
 /** A visible point on a part, already rotated and projected to view space. */
@@ -43,8 +31,6 @@ export type ShadingSample = {
 
 export const SHADING_STOP_COUNT = 6
 
-// Highlight radius as a fraction of the part's projected radius.
-const HIGHLIGHT_RADIUS = 0.28
 // Samples within this score of the best one share the peak; weighting them
 // keeps the peak moving continuously instead of snapping between samples.
 const PEAK_WINDOW = 0.06
@@ -172,7 +158,6 @@ export const flatShading = (
     offset: index / (SHADING_STOP_COUNT - 1),
     value,
   })),
-  highlight: { center, radius: 0, strength: 0 },
 })
 
 // Weighted average position of the samples scoring near the maximum.
@@ -244,11 +229,6 @@ export const fitPartShading = (
     weights[index] = sample.weight
   })
   const focal = peakOf(samples, facing)
-  const highlight: PartHighlight = {
-    center: focal,
-    radius: baseRadius * HIGHLIGHT_RADIUS,
-    strength: light.intensity * attenuation,
-  }
   const sideways = Math.hypot(direction[0], direction[1])
   const away: readonly [number, number] =
     sideways > 1e-6 ? [-direction[0] / sideways, -direction[1] / sideways] : [0, 0]
@@ -257,7 +237,7 @@ export const fitPartShading = (
   // centroid, so the centre's distance from the centroid plus baseRadius suffices.
   // Light straight along the view axis has no sideways direction to shift along.
   const shifts = sideways > 1e-6 ? END_CIRCLE_SHIFTS : [0]
-  const candidates: Omit<PartShading, 'stops' | 'highlight'>[] = shifts.map(shift => {
+  const candidates: Omit<PartShading, 'stops'>[] = shifts.map(shift => {
     const distance = shift * sideways * baseRadius
     const center: readonly [number, number] = [
       centroid[0] + away[0] * distance,
@@ -307,7 +287,6 @@ export const fitPartShading = (
   }
   return {
     ...best.candidate,
-    highlight,
     stops: Array.from(bestStops, (value, index) => ({
       offset: best.start + ((best.end - best.start) * index) / SEGMENTS,
       value,

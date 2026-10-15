@@ -155,50 +155,20 @@ describe('per-part light shading', () => {
       0.4
     )
     expect(shading.stops.every(stop => stop.value === 0.4)).toBe(true)
-    expect(shading.highlight.strength).toBe(0)
   })
 
-  it('centres the highlight on the brightest point, sized to the part', () => {
-    const shading = renderAvatar(poseFromExpression(neutral), surfacePresets.sphere, 1, {
-      light: defaultLight,
-      shading: true,
-    }).shading!.head
-    const radius = surfacePresets.sphere.width / 2
-    // On a sphere the brightest point is the light direction scaled to the radius.
-    const direction = lightDirection(defaultLight)
-    const expected = [direction[0] * radius, direction[1] * radius]
-    expect(
-      Math.hypot(
-        shading.highlight.center[0] - expected[0],
-        shading.highlight.center[1] - expected[1]
-      )
-    ).toBeLessThan(radius * 0.06)
-    expect(shading.highlight.radius).toBeGreaterThan(radius * 0.2)
-    expect(shading.highlight.radius).toBeLessThan(radius * 0.4)
-  })
-
-  it('scales the highlight with light intensity', () => {
-    const strength = (intensity: number) =>
-      renderAvatar(poseFromExpression(neutral), surfacePresets.sphere, 1, {
-        light: { ...defaultLight, intensity },
-        shading: true,
-      }).shading!.head.highlight.strength
-    expect(strength(0)).toBe(0)
-    expect(strength(0.4)).toBeCloseTo(strength(0.8) / 2, 5)
-  })
-
-  it('moves the highlight continuously while the head rotates', () => {
+  it('moves the gradient focus continuously while the head rotates', () => {
     const centers = Array.from({ length: 41 }, (_, step) => {
       const pose = poseFromExpression({ ...neutral, headY: step * 0.5 })
       return renderAvatar(pose, surfacePresets.sphere, 1, { light: defaultLight, shading: true })
-        .shading!.head.highlight.center
+        .shading!.head.focal
     })
     const jumps = centers
       .slice(1)
       .map((center, index) =>
         Math.hypot(center[0] - centers[index][0], center[1] - centers[index][1])
       )
-    // Half a degree of rotation should never jump the highlight by more than a few units.
+    // Half a degree of rotation should never jump the brightest point by more than a few units.
     expect(Math.max(...jumps)).toBeLessThan(3)
   })
 })

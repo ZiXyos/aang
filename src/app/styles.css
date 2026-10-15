@@ -449,9 +449,6 @@ input {
 .is-pixel-rendered .avatar-eye {
   fill: transparent;
 }
-.is-pixel-rendered .avatar-gloss {
-  display: none;
-}
 .is-pixel-rendered .avatar-head.cyan-outline,
 .is-pixel-rendered .avatar-eye.cyan-outline {
   stroke: #51ddff;
