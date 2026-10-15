@@ -9,7 +9,12 @@ import {
 } from '../avatar/avatars'
 import { MAX_BODY_NODES } from '../avatar/body'
 import type { AvatarGeometry } from '../avatar/geometry'
-import { SHADING_STOP_COUNT, flatShading, type PartShading } from '../avatar/shading'
+import {
+  SHADING_STOP_COUNT,
+  flatShading,
+  type PartHighlight,
+  type PartShading,
+} from '../avatar/shading'
 import { createTint, tintColor } from './materialTint'
 
 export type RenderedScene = {
@@ -45,6 +50,15 @@ export type RenderedGradient = {
   fx: MotionValue<number>
   fy: MotionValue<number>
   stops: { offset: MotionValue<number>; color: MotionValue<string> }[]
+  highlight: RenderedHighlight
+}
+
+/** A soft highlight circle, bound to a user-space radialGradient over the part. */
+export type RenderedHighlight = {
+  cx: MotionValue<number>
+  cy: MotionValue<number>
+  r: MotionValue<number>
+  opacity: MotionValue<number>
 }
 
 export type RenderedColors = {
@@ -95,9 +109,12 @@ const shadingOf = (geometry: AvatarGeometry) => ({
   ),
 })
 
+const noHighlight: PartHighlight = { center: [0, 0], radius: 0, strength: 0 }
+
 const createRenderedGradient = (
   shading: PartShading | undefined,
-  tint: (scalar: number) => string
+  tint: (scalar: number) => string,
+  highlight: PartHighlight = shading?.highlight ?? noHighlight
 ): RenderedGradient => ({
   cx: motionValue(shading?.center[0] ?? 0),
   cy: motionValue(shading?.center[1] ?? 0),
@@ -108,12 +125,19 @@ const createRenderedGradient = (
     offset: motionValue(shading?.stops[index].offset ?? index / (SHADING_STOP_COUNT - 1)),
     color: motionValue(shading ? tint(shading.stops[index].value) : ''),
   })),
+  highlight: {
+    cx: motionValue(highlight.center[0]),
+    cy: motionValue(highlight.center[1]),
+    r: motionValue(Math.max(highlight.radius, 0.01)),
+    opacity: motionValue(highlight.strength),
+  },
 })
 
 const paintRenderedGradient = (
   rendered: RenderedGradient,
   shading: PartShading,
-  tint: (scalar: number) => string
+  tint: (scalar: number) => string,
+  highlight: PartHighlight = shading.highlight
 ) => {
   rendered.cx.set(shading.center[0])
   rendered.cy.set(shading.center[1])
@@ -124,6 +148,10 @@ const paintRenderedGradient = (
     stop.offset.set(shading.stops[index].offset)
     stop.color.set(tint(shading.stops[index].value))
   })
+  rendered.highlight.cx.set(highlight.center[0])
+  rendered.highlight.cy.set(highlight.center[1])
+  rendered.highlight.r.set(Math.max(highlight.radius, 0.01))
+  rendered.highlight.opacity.set(highlight.strength)
 }
 
 export const createRenderedColors = (
@@ -135,7 +163,11 @@ export const createRenderedColors = (
   return {
     headShade: createRenderedGradient(shading.head, tint),
     backShades: Array.from({ length: bodyPathSlots }, (_, index) =>
-      createRenderedGradient(shading.back[index], tint)
+      createRenderedGradient(
+        shading.back[index],
+        tint,
+        shading.back[index] === shading.head ? noHighlight : undefined
+      )
     ),
     frontShades: Array.from({ length: bodyPathSlots }, (_, index) =>
       createRenderedGradient(shading.front[index], tint)
@@ -174,9 +206,12 @@ export const paintRenderedColors = (
   const tint = createTint(bodyColour(materials))
   const shading = shadingOf(geometry)
   paintRenderedGradient(rendered.headShade, shading.head, tint)
+  // Composite paths (Mickey ears, the cursor tip) continue the head's gradient;
+  // the head already draws its highlight once.
   shading.back.forEach((part, index) => {
     const gradient = rendered.backShades[index]
-    if (gradient) paintRenderedGradient(gradient, part, tint)
+    if (gradient)
+      paintRenderedGradient(gradient, part, tint, part === shading.head ? noHighlight : undefined)
   })
   shading.front.forEach((part, index) => {
     const gradient = rendered.frontShades[index]

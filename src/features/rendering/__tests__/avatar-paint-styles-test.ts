@@ -48,4 +48,8 @@ describe('frame-painted avatar styles', () => {
     )
     expect(transitioned).toEqual([])
   })
+
+  test('pixel rendering hides the vector highlight', () => {
+    expect(stylesheet).toMatch(/\.is-pixel-rendered \.avatar-gloss\s*\{[^}]*display:\s*none/)
+  })
 })

@@ -19,6 +19,18 @@ export type PartShading = {
   center: readonly [number, number]
   radius: number
   stops: ShadingStop[]
+  highlight: PartHighlight
+}
+
+/**
+ * A soft, wide highlight centred on the part's brightest point, as a fraction of
+ * the part's projected size. Renderers fade it out radially.
+ */
+export type PartHighlight = {
+  center: readonly [number, number]
+  radius: number
+  /** 0..1, already scaled by light intensity and part attenuation. */
+  strength: number
 }
 
 /** A visible point on a part, already rotated and projected to view space. */
@@ -30,6 +42,12 @@ export type ShadingSample = {
 }
 
 export const SHADING_STOP_COUNT = 6
+
+// Highlight radius as a fraction of the part's projected radius.
+const HIGHLIGHT_RADIUS = 0.28
+// Samples within this score of the best one share the peak; weighting them
+// keeps the peak moving continuously instead of snapping between samples.
+const PEAK_WINDOW = 0.06
 
 // Two families of candidate gradients, scaled by the part's projected radius and
 // by how sideways the light is:
@@ -154,7 +172,28 @@ export const flatShading = (
     offset: index / (SHADING_STOP_COUNT - 1),
     value,
   })),
+  highlight: { center, radius: 0, strength: 0 },
 })
+
+// Weighted average position of the samples scoring near the maximum.
+const peakOf = (samples: ShadingSample[], scores: Float64Array): readonly [number, number] => {
+  let best = -Infinity
+  for (const score of scores) best = Math.max(best, score)
+  const floor = best - PEAK_WINDOW
+  let total = 0
+  let x = 0
+  let y = 0
+  samples.forEach((sample, index) => {
+    if (scores[index] <= floor) return
+    const share = (scores[index] - floor) / PEAK_WINDOW
+    const weight = sample.weight * share * share
+    total += weight
+    x += sample.screen[0] * weight
+    y += sample.screen[1] * weight
+  })
+  if (total <= 1e-12) return samples[scores.indexOf(best)].screen
+  return [x / total, y / total]
+}
 
 /**
  * Fits a radial gradient to the per-sample diffuse light of one convex part.
@@ -195,21 +234,21 @@ export const fitPartShading = (
   const direction = lightDirection(light)
   const values = new Float64Array(samples.length)
   const weights = new Float64Array(samples.length)
-  let brightest = 0
-  let brightestFacing = -Infinity
+  const facing = new Float64Array(samples.length)
   samples.forEach((sample, index) => {
-    const facing =
+    facing[index] =
       sample.normal[0] * direction[0] +
       sample.normal[1] * direction[1] +
       sample.normal[2] * direction[2]
-    values[index] = lightScalar(facing, light, attenuation)
+    values[index] = lightScalar(facing[index], light, attenuation)
     weights[index] = sample.weight
-    if (facing > brightestFacing) {
-      brightestFacing = facing
-      brightest = index
-    }
   })
-  const focal = samples[brightest].screen
+  const focal = peakOf(samples, facing)
+  const highlight: PartHighlight = {
+    center: focal,
+    radius: baseRadius * HIGHLIGHT_RADIUS,
+    strength: light.intensity * attenuation,
+  }
   const sideways = Math.hypot(direction[0], direction[1])
   const away: readonly [number, number] =
     sideways > 1e-6 ? [-direction[0] / sideways, -direction[1] / sideways] : [0, 0]
@@ -218,7 +257,7 @@ export const fitPartShading = (
   // centroid, so the centre's distance from the centroid plus baseRadius suffices.
   // Light straight along the view axis has no sideways direction to shift along.
   const shifts = sideways > 1e-6 ? END_CIRCLE_SHIFTS : [0]
-  const candidates: Omit<PartShading, 'stops'>[] = shifts.map(shift => {
+  const candidates: Omit<PartShading, 'stops' | 'highlight'>[] = shifts.map(shift => {
     const distance = shift * sideways * baseRadius
     const center: readonly [number, number] = [
       centroid[0] + away[0] * distance,
@@ -268,6 +307,7 @@ export const fitPartShading = (
   }
   return {
     ...best.candidate,
+    highlight,
     stops: Array.from(bestStops, (value, index) => ({
       offset: best.start + ((best.end - best.start) * index) / SEGMENTS,
       value,

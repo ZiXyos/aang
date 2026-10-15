@@ -1,5 +1,5 @@
 import { RotateCcw } from 'lucide-react'
-import { motion } from 'motion/react'
+import { motion, type MotionValue } from 'motion/react'
 import { useEffect, useId, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -56,6 +56,7 @@ import {
   findBodyNodePath,
   type RenderedColors,
   type RenderedGradient,
+  type RenderedHighlight,
   type RenderedPalette,
   type RenderedScene,
 } from '@/features/rendering/renderedScene'
@@ -75,6 +76,48 @@ function ShadeGradient({ id, gradient }: { id: string; gradient: RenderedGradien
         <motion.stop key={index} offset={stop.offset} stopColor={stop.color} />
       ))}
     </motion.radialGradient>
+  )
+}
+
+// Opacities of the reviewed highlight at the default light intensity, divided by
+// it so that the highlight's opacity (its strength) scales it linearly.
+const GLOSS_CORE_OPACITY = 0.55 / defaultLight.intensity
+const GLOSS_MID_OPACITY = 0.32 / defaultLight.intensity
+
+function GlossGradient({ id, highlight }: { id: string; highlight: RenderedHighlight }) {
+  return (
+    <motion.radialGradient
+      id={id}
+      gradientUnits="userSpaceOnUse"
+      cx={highlight.cx}
+      cy={highlight.cy}
+      r={highlight.r}
+    >
+      <stop offset="0" stopColor="#fff" stopOpacity={GLOSS_CORE_OPACITY} />
+      <stop offset="0.45" stopColor="#fff" stopOpacity={GLOSS_MID_OPACITY} />
+      <stop offset="1" stopColor="#fff" stopOpacity="0" />
+    </motion.radialGradient>
+  )
+}
+
+// The highlight repaints the part's own path, so it never spills past the silhouette.
+function Gloss({
+  path,
+  id,
+  highlight,
+}: {
+  path: MotionValue<string>
+  id: string
+  highlight: RenderedHighlight
+}) {
+  return (
+    <motion.path
+      className="avatar-gloss"
+      d={path}
+      fill={`url(#${id})`}
+      opacity={highlight.opacity}
+      pointerEvents="none"
+    />
   )
 }
 
@@ -920,16 +963,37 @@ export function AvatarCanvas({
               gradient={gradient}
             />
           ))}
+          <GlossGradient id={`${shadeId}-gloss-head`} highlight={headShade.highlight} />
+          {backShades.map((gradient, index) => (
+            <GlossGradient
+              key={`back-${index}`}
+              id={`${shadeId}-gloss-back-${index}`}
+              highlight={gradient.highlight}
+            />
+          ))}
+          {frontShades.map((gradient, index) => (
+            <GlossGradient
+              key={`front-${index}`}
+              id={`${shadeId}-gloss-front-${index}`}
+              highlight={gradient.highlight}
+            />
+          ))}
         </defs>
         <motion.g style={{ x: offsetX, y: offsetY }}>
           {backPaths.map((pathValue, index) => (
-            <motion.path
-              className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
-              fill={`url(#${shadeId}-back-${index})`}
-              d={pathValue}
-              key={index}
-              onPointerDown={event => selectBodyPath(event, backNodeIds.current[index])}
-            />
+            <g key={index}>
+              <motion.path
+                className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
+                fill={`url(#${shadeId}-back-${index})`}
+                d={pathValue}
+                onPointerDown={event => selectBodyPath(event, backNodeIds.current[index])}
+              />
+              <Gloss
+                path={pathValue}
+                id={`${shadeId}-gloss-back-${index}`}
+                highlight={backShades[index].highlight}
+              />
+            </g>
           ))}
           <motion.path
             className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
@@ -940,6 +1004,7 @@ export function AvatarCanvas({
               startDrag(event)
             }}
           />
+          <Gloss path={headPath} id={`${shadeId}-gloss-head`} highlight={headShade.highlight} />
           <g clipPath="url(#avatar-head-clip)">
             {(showWire || highlight === 'head') &&
               wirePaths.map((pathValue, index) => (
@@ -966,13 +1031,19 @@ export function AvatarCanvas({
             />
           </g>
           {frontPaths.map((pathValue, index) => (
-            <motion.path
-              className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
-              fill={`url(#${shadeId}-front-${index})`}
-              d={pathValue}
-              key={index}
-              onPointerDown={event => selectBodyPath(event, frontNodeIds.current[index])}
-            />
+            <g key={index}>
+              <motion.path
+                className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
+                fill={`url(#${shadeId}-front-${index})`}
+                d={pathValue}
+                onPointerDown={event => selectBodyPath(event, frontNodeIds.current[index])}
+              />
+              <Gloss
+                path={pathValue}
+                id={`${shadeId}-gloss-front-${index}`}
+                highlight={frontShades[index].highlight}
+              />
+            </g>
           ))}
         </motion.g>
         {selectedBodyPath && (

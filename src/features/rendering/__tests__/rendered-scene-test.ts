@@ -97,6 +97,26 @@ describe('rendered avatar scene', () => {
     const colors = createRenderedColors(materials, geometry)
     const stopColors = colors.headShade.stops.map(stop => stop.color.get())
     expect(new Set(stopColors)).toEqual(new Set([colors.headFill.get()]))
+    expect(colors.headShade.highlight.opacity.get()).toBe(0)
+  })
+
+  it('moves each highlight in place and draws composite paths without a second one', () => {
+    const render = (headY: number) =>
+      renderAvatar(poseFromExpression({ ...defaultExpression, headY }), surfacePresets.mickey, 1, {
+        shading: true,
+      })
+    const materials = materialsFromColors({ body: '#5b7fe5', eyes: '#111316' })
+    const colors = createRenderedColors(materials, render(0))
+    const highlight = colors.headShade.highlight
+    const before = highlight.cx.get()
+
+    paintRenderedColors(colors, materials, render(40))
+
+    expect(colors.headShade.highlight).toBe(highlight)
+    expect(highlight.cx.get()).not.toBe(before)
+    expect(highlight.opacity.get()).toBeGreaterThan(0)
+    // Mickey ears continue the head's gradient but must not repeat its highlight.
+    expect(colors.backShades[0].highlight.opacity.get()).toBe(0)
   })
 
   it('gives the wireframe a tinted stroke instead of a hardcoded colour', () => {
