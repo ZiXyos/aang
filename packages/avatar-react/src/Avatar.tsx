@@ -40,6 +40,21 @@ const runtimeEnvironment = () => ({
   reduceMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
 })
 
+const shouldRunFrameLoop = (
+  definition: AvatarDefinition,
+  playback: Readonly<CorePlaybackState>,
+  environment: ReturnType<typeof runtimeEnvironment>
+) => {
+  if (playback.status === 'playing') return true
+  const motion = definition.expressions[playback.activeExpression]?.motion
+  return (
+    playback.status === 'stopped' &&
+    !environment.reduceMotion &&
+    motion !== undefined &&
+    (motion.eyes !== 'none' || motion.body !== 'none')
+  )
+}
+
 export const markAvatarDefinitionValidated = (definition: object) => {
   validatedDefinitions.add(definition)
 }
@@ -331,7 +346,7 @@ export function Avatar({
   }, [playback.activeExpression, onExpressionChange])
 
   useEffect(() => {
-    if (playback.status !== 'playing') return
+    if (!shouldRunFrameLoop(definition, playback, runtimeEnvironment())) return
     let frame = 0
     const tick = (now: number) => {
       const current = playbackRef.current
@@ -351,11 +366,13 @@ export function Avatar({
       }
       const frameScene = renderPlaybackFrame(next, now, environment)
       paintScene(frameScene)
-      if (next.status === 'playing') frame = requestAnimationFrame(tick)
+      if (shouldRunFrameLoop(definition, next, environment)) {
+        frame = requestAnimationFrame(tick)
+      }
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
-  }, [definition, playback.status, onAnimationEnd])
+  }, [definition, playback.activeExpression, playback.status, onAnimationEnd])
 
   const controlled = animation !== undefined || expression !== undefined
   useImperativeHandle(ref, () => ({

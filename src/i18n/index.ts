@@ -76,6 +76,7 @@ const english: Record<string, string> = {
     'Use lowercase letters, numbers, and hyphens, for example happy-smile.',
   'neutral est réservé à l’apparence neutre de l’avatar.':
     'neutral is reserved for the avatar neutral appearance.',
+  'Apparence neutre': 'Neutral appearance',
   'Cette clé est déjà utilisée dans cette bibliothèque.':
     'This key is already used in this library.',
   'L’avatar à gauche affiche cette expression en direct.':
@@ -168,6 +169,9 @@ const english: Record<string, string> = {
   'Aucune animation sélectionnée': 'No animation selected',
   'Guide d’utilisation': 'Usage guide',
   'Voir le guide complet': 'View full usage guide',
+  'Copier les instructions pour l’IA': 'Copy instruction for AI',
+  'Guide d’utilisation copié dans le presse-papiers.': 'Usage guide copied to the clipboard.',
+  'Impossible de copier le guide d’utilisation.': 'Could not copy the usage guide.',
   'Guide d’utilisation de l’avatar React': 'React avatar usage guide',
   'Guide d’utilisation de l’avatar JavaScript': 'JavaScript avatar usage guide',
   'Installe le package, crée ton composant et choisis le niveau de contrôle adapté.':
@@ -387,8 +391,13 @@ const english: Record<string, string> = {
     'Transfer every avatar, expression and animation to another browser.',
   'Télécharger le projet JSON': 'Download JSON project',
   'Importer un projet JSON': 'Import JSON project',
-  'Ce fichier ne contient pas un projet Avatar Studio valide et compatible.':
-    'This file does not contain a valid, compatible Avatar Studio project.',
+  'Ce fichier n’est ni un avatar .avatar.json ni un projet Avatar Studio valide.':
+    'This file is neither a .avatar.json avatar nor a valid Avatar Studio project.',
+  'Ajouter un avatar': 'Add an avatar',
+  'Importer un .avatar.json': 'Import a .avatar.json',
+  'Importer cet avatar ?': 'Import this avatar?',
+  'Cet avatar sera ajouté à ta bibliothèque avec ses expressions et animations, puis sélectionné. Les autres avatars sont conservés.':
+    'This avatar will be added to your library with its expressions and animations, then selected. Your other avatars are kept.',
   'Importer ce projet ?': 'Import this project?',
   'Le projet local actuel sera remplacé par les avatars, expressions, animations et état de lecture de ce fichier.':
     'The current local project will be replaced with the avatars, expressions, animations and playback state from this file.',

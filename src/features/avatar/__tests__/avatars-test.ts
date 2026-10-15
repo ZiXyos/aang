@@ -1,5 +1,5 @@
 import { defaultExpression } from '@/features/avatar/presets'
-import { createInitialSequences } from '@/features/animation/sequences'
+import { createInitialSequences, NEUTRAL_EXPRESSION_ID } from '@/features/animation/sequences'
 import {
   applyAvatarEyeDefaults,
   cloneAvatarBehavior,
@@ -7,6 +7,7 @@ import {
   createUnkeyedExpressionCopy,
   defaultAvatarEyes,
   parseAvatarEyeDefaults,
+  parseAvatarLibrary,
   parseAvatarRenderStyle,
   resolveAvatarBehavior,
 } from '@/features/avatar/avatars'
@@ -89,6 +90,32 @@ describe('avatar behavior library', () => {
     expect(behavior.sequences).not.toBe(base.sequences)
     expect(behavior.sequences[0].steps).not.toBe(base.sequences[0].steps)
     expect(behavior.sequences[0].blink).not.toBe(base.sequences[0].blink)
+  })
+
+  it('preserves an owned neutral-only behavior library on reload', () => {
+    const avatar = createAvatar('Neutral only')
+    const sequence = createInitialSequences()[0]
+    avatar.behavior = {
+      expressions: [],
+      sequences: [
+        {
+          ...sequence,
+          steps: [{ ...sequence.steps[0], expressionId: NEUTRAL_EXPRESSION_ID }],
+        },
+      ],
+    }
+    const fallbackAvatar = createAvatar('Fallback')
+
+    const parsed = parseAvatarLibrary(
+      { activeAvatarId: avatar.id, avatars: [avatar] },
+      { activeAvatarId: fallbackAvatar.id, avatars: [fallbackAvatar] },
+      base
+    )
+
+    expect(parsed.avatars[0].behavior?.expressions).toEqual([])
+    expect(parsed.avatars[0].behavior?.sequences[0].steps[0].expressionId).toBe(
+      NEUTRAL_EXPRESSION_ID
+    )
   })
 })
 

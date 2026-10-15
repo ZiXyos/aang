@@ -48,6 +48,7 @@ export const chinese: Record<string, string> = {
   'Utilise des lettres minuscules, des chiffres et des tirets, par exemple happy-smile.':
     '请使用小写字母、数字和连字符，例如 happy-smile。',
   'neutral est réservé à l’apparence neutre de l’avatar.': 'neutral 保留用于头像的中性外观。',
+  'Apparence neutre': '中性外观',
   'Cette clé est déjà utilisée dans cette bibliothèque.': '此键已在当前库中使用。',
   'L’avatar à gauche affiche cette expression en direct.': '左侧头像会实时预览此表情。',
   Corps: '身体',
@@ -137,6 +138,9 @@ export const chinese: Record<string, string> = {
   'Aucune animation sélectionnée': '未选择动画',
   'Guide d’utilisation': '使用指南',
   'Voir le guide complet': '查看完整使用指南',
+  'Copier les instructions pour l’IA': '复制 AI 使用说明',
+  'Guide d’utilisation copié dans le presse-papiers.': '使用指南已复制到剪贴板。',
+  'Impossible de copier le guide d’utilisation.': '无法复制使用指南。',
   'Guide d’utilisation de l’avatar React': 'React 头像使用指南',
   'Guide d’utilisation de l’avatar JavaScript': 'JavaScript 头像使用指南',
   'Installe le package, crée ton composant et choisis le niveau de contrôle adapté.':
@@ -347,8 +351,13 @@ export const chinese: Record<string, string> = {
     '将所有头像、表情和动画传输到另一个浏览器。',
   'Télécharger le projet JSON': '下载 JSON 项目',
   'Importer un projet JSON': '导入 JSON 项目',
-  'Ce fichier ne contient pas un projet Avatar Studio valide et compatible.':
-    '此文件不包含有效且兼容的头像工作室项目。',
+  'Ce fichier n’est ni un avatar .avatar.json ni un projet Avatar Studio valide.':
+    '此文件既不是 .avatar.json 头像，也不是有效的头像工作室项目。',
+  'Ajouter un avatar': '添加头像',
+  'Importer un .avatar.json': '导入 .avatar.json',
+  'Importer cet avatar ?': '导入此头像？',
+  'Cet avatar sera ajouté à ta bibliothèque avec ses expressions et animations, puis sélectionné. Les autres avatars sont conservés.':
+    '该头像及其表情和动画将被添加到你的库中并选中，其他头像会保留。',
   'Importer ce projet ?': '导入此项目？',
   'Le projet local actuel sera remplacé par les avatars, expressions, animations et état de lecture de ce fichier.':
     '当前本地项目将被此文件中的头像、表情、动画和播放状态替换。',

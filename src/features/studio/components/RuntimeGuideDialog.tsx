@@ -100,6 +100,260 @@ export function Controls() {
   </>
 }`
 
+export type RuntimeGuideIntegration = 'react' | 'javascript'
+
+type TranslateGuideText = (text: string) => string
+type RuntimeGuideProp = readonly [name: string, type: string, description: string]
+
+const markdownCode = (code: string, language = '') => `\`\`\`${language}\n${code}\n\`\`\``
+
+const markdownProps = (props: readonly RuntimeGuideProp[], t: TranslateGuideText) =>
+  props
+    .map(([name, type, description]) => `- \`${name}\` — \`${type}\`: ${t(description)}`)
+    .join('\n')
+
+export function buildRuntimeGuideText({
+  animationKey,
+  integration,
+  t,
+}: {
+  animationKey?: string
+  integration: RuntimeGuideIntegration
+  t: TranslateGuideText
+}) {
+  const privatePackageNotice = t(
+    'Les packages sont encore privés. Cette commande fonctionnera après leur publication ; utilise le workspace ou les tarballs pour les tests locaux.'
+  )
+
+  if (integration === 'javascript') {
+    const options: readonly RuntimeGuideProp[] = [
+      [
+        'definition',
+        'AvatarDefinition | unknown',
+        'Obligatoire. Définition JSON validée avant la création des éléments SVG.',
+      ],
+      [
+        'defaultAnimation',
+        'AnimationKey | undefined',
+        'Optionnelle. Animation lancée au montage lorsque autoplay vaut true. Mutuellement exclusive avec defaultExpression.',
+      ],
+      [
+        'defaultExpression',
+        'ExpressionKey | undefined',
+        'Optionnelle. Expression initiale affichée sans lancer de timeline. Mutuellement exclusive avec defaultAnimation.',
+      ],
+      [
+        'autoplay',
+        'boolean | undefined',
+        'Optionnelle, défaut true. Contrôle uniquement le lancement automatique de defaultAnimation.',
+      ],
+      [
+        'size',
+        'number | string | undefined',
+        'Optionnelle, défaut 240. Largeur et hauteur CSS du conteneur rendu.',
+      ],
+      ['className', 'string | undefined', 'Optionnelle. Classe CSS ajoutée au conteneur rendu.'],
+      [
+        'ariaLabel',
+        'string | undefined',
+        'Optionnelle, défaut « Procedural avatar ». Nom accessible du rendu.',
+      ],
+      [
+        'onError',
+        '(error: AvatarRuntimeError) => void',
+        'Optionnelle. Reçoit les erreurs de clé inconnue utilisées lors de l’initialisation.',
+      ],
+      [
+        'onAnimationEnd',
+        '(animation: AnimationKey) => void',
+        'Optionnelle. Appelée lorsqu’une animation once se termine.',
+      ],
+      [
+        'onExpressionChange',
+        '(expression: ExpressionKey) => void',
+        'Optionnelle. Appelée lorsque l’expression active change.',
+      ],
+    ]
+    const controller: readonly RuntimeGuideProp[] = [
+      [
+        'play(animation)',
+        '(animation: AnimationKey) => AvatarCommandResult',
+        'Lance ou reprend une animation par sa clé.',
+      ],
+      [
+        'setExpression(expression)',
+        '(expression: ExpressionKey) => AvatarCommandResult',
+        'Affiche une expression avec une transition courte.',
+      ],
+      ['pause()', '() => void', 'Met en pause la timeline à sa position exacte.'],
+      ['stop()', '() => void', 'Arrête la lecture et revient à neutral.'],
+      [
+        'getState()',
+        '() => AvatarPlaybackState',
+        'Retourne l’animation, l’expression et le statut actifs.',
+      ],
+      [
+        'destroy()',
+        '() => void',
+        'Annule la frame planifiée et retire uniquement le conteneur créé par avatar-web.',
+      ],
+    ]
+
+    return [
+      `# ${t('Guide d’utilisation de l’avatar JavaScript')}`,
+      t(
+        'Installe le module ESM, charge la définition JSON et monte l’avatar dans un élément du DOM.'
+      ),
+      `## ${t('Installation')}`,
+      t('Ajoute le renderer DOM, qui utilise automatiquement avatar-core.'),
+      markdownCode(webInstallExample, 'bash'),
+      privatePackageNotice,
+      `## ${t('Utilisation avec un bundler ESM')}`,
+      t(
+        'Vite et les bundlers modernes résolvent le package et importent le même fichier .avatar.json que React.'
+      ),
+      markdownCode(webAvatarExample(animationKey), 'js'),
+      `## ${t('Options de createAvatar')}`,
+      t('Référence des valeurs acceptées lors du montage dans le DOM.'),
+      markdownProps(options, t),
+      `## ${t('API du contrôleur DOM')}`,
+      t('createAvatar retourne immédiatement ces commandes impératives.'),
+      markdownProps(controller, t),
+      `## ${t('Navigateur sans bundler')}`,
+      t('Utilise une URL ESM via un CDN ou une import map, puis charge la définition avec fetch.'),
+      markdownCode(nativeBrowserExample, 'html'),
+    ].join('\n\n')
+  }
+
+  const targetProps: readonly RuntimeGuideProp[] = [
+    [
+      'definition',
+      'AvatarDefinition',
+      'Obligatoire. Objet AvatarDefinition validé contenant les expressions et les animations à afficher.',
+    ],
+    [
+      'animation',
+      'AnimationKey | undefined',
+      'Optionnelle. Contrôle une timeline par sa clé. Chaque étape choisit l’expression affichée. Mutuellement exclusive avec expression ; une cible contrôlée prend priorité sur les valeurs default.',
+    ],
+    [
+      'expression',
+      'ExpressionKey | undefined',
+      'Optionnelle. Contrôle directement une expression par sa clé. Mutuellement exclusive avec animation ; une cible contrôlée prend priorité sur les valeurs default.',
+    ],
+    [
+      'defaultAnimation',
+      'AnimationKey | undefined',
+      'Optionnelle. Définit la timeline initiale en mode non contrôlé. Lue au montage ; autoplay est activé par défaut. Mutuellement exclusive avec defaultExpression.',
+    ],
+    [
+      'defaultExpression',
+      'ExpressionKey | undefined',
+      'Optionnelle. Définit l’expression initiale en mode non contrôlé. Lue au montage, sans lancer de timeline. Mutuellement exclusive avec defaultAnimation.',
+    ],
+    [
+      'autoplay',
+      'boolean | undefined',
+      'Optionnelle, défaut true. Lance automatiquement defaultAnimation ; sans defaultAnimation, elle n’a aucun effet.',
+    ],
+    [
+      'ref',
+      'Ref<AvatarController> | undefined',
+      'Optionnelle. Donne accès à l’API impérative AvatarController.',
+    ],
+  ]
+  const presentationProps: readonly RuntimeGuideProp[] = [
+    [
+      'size',
+      'number | string | undefined',
+      'Optionnelle, défaut 240. Nombre ou valeur CSS utilisée pour la largeur et la hauteur du conteneur.',
+    ],
+    ['className', 'string | undefined', 'Optionnelle. Classe CSS ajoutée au conteneur externe.'],
+    [
+      'style',
+      'CSSProperties | undefined',
+      'Optionnelle. Styles inline du conteneur externe ; width et height viennent de size.',
+    ],
+    [
+      'ariaLabel',
+      'string | undefined',
+      'Optionnelle, défaut « Procedural avatar ». Nom accessible annoncé aux lecteurs d’écran.',
+    ],
+  ]
+  const callbackProps: readonly RuntimeGuideProp[] = [
+    [
+      'onAnimationEnd',
+      '(animation: AnimationKey) => void',
+      'Optionnelle. Reçoit la clé de l’animation once terminée naturellement.',
+    ],
+    [
+      'onExpressionChange',
+      '(expression: ExpressionKey) => void',
+      'Optionnelle. Reçoit la clé de l’expression chaque fois que l’expression sémantique affichée change.',
+    ],
+    [
+      'onError',
+      '(error: AvatarRuntimeError) => void',
+      'Optionnelle. Reçoit une erreur typée lorsqu’une prop animation, expression ou default référence une clé inconnue.',
+    ],
+  ]
+  const controllerProps: readonly RuntimeGuideProp[] = [
+    [
+      'play(animation)',
+      '(animation: AnimationKey) => AvatarCommandResult',
+      'Lance ou reprend une animation et retourne un résultat typé.',
+    ],
+    ['pause()', '() => void', 'Met en pause la timeline à sa position exacte.'],
+    [
+      'stop()',
+      '() => void',
+      'En mode non contrôlé, arrête la lecture et revient à neutral. En mode contrôlé, les props restent la source de vérité.',
+    ],
+    [
+      'setExpression(expression)',
+      '(expression: ExpressionKey) => AvatarCommandResult',
+      'Affiche directement une expression.',
+    ],
+    [
+      'getState()',
+      '() => AvatarPlaybackState',
+      'Retourne l’animation, l’expression et le statut actifs.',
+    ],
+  ]
+
+  return [
+    `# ${t('Guide d’utilisation de l’avatar React')}`,
+    t('Installe le package, crée ton composant et choisis le niveau de contrôle adapté.'),
+    `## ${t('Installation')}`,
+    t('Ajoute le package React et ses dépendances.'),
+    markdownCode(runtimeInstallExample, 'bash'),
+    privatePackageNotice,
+    `## ${t('API recommandée : créer un avatar concret')}`,
+    t(
+      'createAvatar valide le JSON et retourne un composant dédié dont les clés d’animations sont typées.'
+    ),
+    markdownCode(createAvatarExample(animationKey), 'tsx'),
+    `## ${t('Props de l’avatar')}`,
+    t('Référence complète : type, valeur par défaut, comportement et contraintes de chaque prop.'),
+    `### ${t('Cible et lecture')}`,
+    markdownProps(targetProps, t),
+    `### ${t('Présentation')}`,
+    markdownProps(presentationProps, t),
+    `### ${t('Callbacks de lecture')}`,
+    markdownProps(callbackProps, t),
+    `## ${t('Avatar générique')}`,
+    t(
+      'Utilise Avatar directement lorsque la définition est chargée à l’exécution ou change entre plusieurs avatars.'
+    ),
+    markdownCode(genericAvatarExample, 'tsx'),
+    `## ${t('API impérative')}`,
+    t('La ref expose les commandes de lecture et l’état courant de l’avatar.'),
+    t('Les commandes de cible sont disponibles en mode non contrôlé ; sinon utilise les props.'),
+    markdownProps(controllerProps, t),
+    markdownCode(imperativeExample(animationKey), 'tsx'),
+  ].join('\n\n')
+}
+
 function GuideCode({ children }: { children: string }) {
   return (
     <pre className="avatar-guide-code" tabIndex={0}>
@@ -129,7 +383,7 @@ export function RuntimeGuideDialog({
   open,
 }: {
   animationKey?: string
-  integration?: 'react' | 'javascript'
+  integration?: RuntimeGuideIntegration
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {

@@ -19,6 +19,11 @@ const expression = {
   motion: { eyes: 'none', body: 'none' },
 } as const
 
+const ambientExpression = {
+  ...expression,
+  motion: { eyes: 'none', body: 'shake' },
+} as const
+
 const definition: AvatarDefinition = {
   schema: 'bible-strong/avatar-definition',
   schemaVersion: 1,
@@ -28,8 +33,12 @@ const definition: AvatarDefinition = {
     nodes: [],
   },
   colors: { body: '#5b7fe5', eyes: '#111316' },
-  expressions: { neutral: expression, smile: { ...expression, head: { x: 0, y: 10, z: 0 } } },
-  expressionOrder: ['neutral', 'smile'],
+  expressions: {
+    neutral: expression,
+    smile: { ...expression, head: { x: 0, y: 10, z: 0 } },
+    restless: ambientExpression,
+  },
+  expressionOrder: ['neutral', 'smile', 'restless'],
   animations: {
     greet: {
       playbackMode: 'loop',
@@ -294,6 +303,33 @@ describe('@bible-strong/avatar-react', () => {
     })
     expect(renders).toBe(beforeFrames)
     clock.mockRestore()
+    request.mockRestore()
+    cancel.mockRestore()
+  })
+
+  it('keeps scheduling frames for a controlled expression with ambient motion', () => {
+    let nextFrame = 0
+    const frames = new Map<number, FrameRequestCallback>()
+    const request = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      frames.set(++nextFrame, callback)
+      return nextFrame
+    })
+    const cancel = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(id => {
+      frames.delete(id)
+    })
+
+    render(<Avatar definition={definition} expression="restless" />)
+
+    act(() => {
+      for (let index = 1; index <= 3; index++) {
+        const callback = [...frames.values()].at(-1)
+        frames.clear()
+        callback?.(index * 1_000)
+      }
+    })
+
+    expect(request).toHaveBeenCalledTimes(4)
+    expect(frames).toHaveLength(1)
     request.mockRestore()
     cancel.mockRestore()
   })

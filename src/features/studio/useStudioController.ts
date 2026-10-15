@@ -6,6 +6,7 @@ import { useStudioLanguage } from '@/i18n'
 import {
   AMBIENT_FRAME_MS,
   bounded,
+  COPY_FEEDBACK_DURATION_MS,
   createExpressionId,
   downloadBlob,
   INSPECTOR_FRAME_MS,
@@ -35,8 +36,10 @@ import {
   duplicateSequence,
   findExpressionIndex,
   getSequenceSpring,
+  NEUTRAL_EXPRESSION_ID,
   readSequenceClock,
   remapSequencesAfterExpressionDelete,
+  resolveSequenceExpression,
   type AvatarSequence,
   type SequenceStep,
 } from '@/features/animation/sequences'
@@ -65,6 +68,10 @@ import {
   type AvatarRenderStyle,
   type StudioAvatar,
 } from '@/features/avatar/avatars'
+import {
+  isAvatarDefinitionSource,
+  studioAvatarFromDefinitionSource,
+} from '@/features/avatar/importAvatarDefinition'
 import {
   bodyPrimitiveTypes,
   createBodyNode,
@@ -174,6 +181,14 @@ export function useStudioController() {
     status: 'idle' | 'success' | 'error'
     source?: readonly unknown[]
   }>({ status: 'idle' })
+  useEffect(() => {
+    if (runtimeCopyFeedback.status === 'idle') return
+    const timeout = window.setTimeout(
+      () => setRuntimeCopyFeedback({ status: 'idle' }),
+      COPY_FEEDBACK_DURATION_MS
+    )
+    return () => window.clearTimeout(timeout)
+  }, [runtimeCopyFeedback])
   const initialStatePlayback = initialDocument.playback
   const updateStudioLibrary = (library: typeof initialDocument.library) =>
     documentStore.update({ library })
@@ -200,9 +215,11 @@ export function useStudioController() {
   const [pendingProjectImport, setPendingProjectImport] = useState<{
     document: StudioDocument
     fileName: string
+    kind: 'project' | 'avatar'
   } | null>(null)
   const [projectImportError, setProjectImportError] = useState<string | null>(null)
   const projectImportRef = useRef<HTMLInputElement>(null)
+  const avatarImportRef = useRef<HTMLInputElement>(null)
   const [statePlayerExpanded, setStatePlayerExpanded] = useState(false)
   const [activeExpression, setActiveExpression] = useState<number | null>(null)
   const [editing, setEditing] = useState<{ index: number | null; draft: Expression } | null>(null)
@@ -1137,16 +1154,15 @@ export function useStudioController() {
       playbackTimeline.current = { ...playbackTimeline.current, stepDueAt: null }
       const step = sequence.steps[playbackTimeline.current.position]
       const availableExpressions = expressionsRef.current
-      const expressionIndex = findExpressionIndex(availableExpressions, step.expressionId)
-      const preset = availableExpressions[expressionIndex]
+      const resolved = resolveSequenceExpression(availableExpressions, step.expressionId)
       const durationMs = (reduceMotion ? 0 : step.transitionMs) + step.holdMs
       setPlaybackVisual(current => ({
         position: playbackTimeline.current.position,
         run: current.run + 1,
         durationMs,
       }))
-      if (preset) {
-        transitionToExpression(preset, expressionIndex, step)
+      if (resolved.expression) {
+        transitionToExpression(resolved.expression, resolved.index, step)
       }
       scheduleAdvance(durationMs)
     }
@@ -1436,15 +1452,18 @@ export function useStudioController() {
           steps: sequence.steps.map(step => ({ ...step })),
           blink: { ...sequence.blink },
         }
-      : createSequence(expressions[activeExpression ?? 0]?.id ?? expressions[0]?.id)
+      : createSequence(
+          expressions[activeExpression ?? 0]?.id ?? expressions[0]?.id ?? NEUTRAL_EXPRESSION_ID
+        )
     setSequenceEditing({ sourceId: sequence?.id ?? null, draft })
     setSelectedSequenceStepId(draft.steps[0]?.id ?? null)
     const firstStep = draft.steps[0]
-    const expressionIndex = firstStep
-      ? findExpressionIndex(expressions, firstStep.expressionId)
-      : -1
-    const preset = expressions[expressionIndex]
-    if (preset) transitionToExpression(preset, expressionIndex, firstStep)
+    const resolved = firstStep
+      ? resolveSequenceExpression(expressions, firstStep.expressionId)
+      : null
+    if (resolved?.expression) {
+      transitionToExpression(resolved.expression, resolved.index, firstStep)
+    }
   }
 
   const cancelSequenceEditing = () => {
@@ -1849,19 +1868,46 @@ export function useStudioController() {
     setProjectImportError(null)
     if (file.size > 10_000_000) {
       setProjectImportError(
-        t('Ce fichier ne contient pas un projet Avatar Studio valide et compatible.')
+        t('Ce fichier n’est ni un avatar .avatar.json ni un projet Avatar Studio valide.')
       )
       return
     }
     file
       .text()
       .then(source => {
+        // One picker, two formats: a `.avatar.json` definition adds a single avatar
+        // to the current library, a studio project replaces the whole document.
+        try {
+          const { avatar } = studioAvatarFromDefinitionSource(source)
+          const document = currentStudioDocument()
+          setPendingProjectImport({
+            document: {
+              ...document,
+              library: {
+                activeAvatarId: avatar.id,
+                avatars: [
+                  ...document.library.avatars.filter(existing => existing.id !== avatar.id),
+                  avatar,
+                ],
+              },
+            },
+            fileName: file.name,
+            kind: 'avatar',
+          })
+          return
+        } catch (avatarError) {
+          const parsed: unknown = JSON.parse(source)
+          if (isAvatarDefinitionSource(parsed)) throw avatarError
+        }
         const imported = parseImportedStudioDocument(source, currentStudioDocument())
-        setPendingProjectImport({ document: imported, fileName: file.name })
+        setPendingProjectImport({ document: imported, fileName: file.name, kind: 'project' })
       })
-      .catch(() => {
+      .catch(error => {
+        const summary = t(
+          'Ce fichier n’est ni un avatar .avatar.json ni un projet Avatar Studio valide.'
+        )
         setProjectImportError(
-          t('Ce fichier ne contient pas un projet Avatar Studio valide et compatible.')
+          error instanceof Error && error.message ? `${summary} ${error.message}` : summary
         )
       })
   }
@@ -2036,6 +2082,7 @@ export function useStudioController() {
     previewSelectedBodyNode,
     previewStateMove,
     projectImportError,
+    avatarImportRef,
     projectImportRef,
     reduceMotion,
     renameActiveAvatar,

@@ -3,6 +3,7 @@ import {
   createInitialSequences,
   duplicateSequence,
   getSequenceSpring,
+  NEUTRAL_EXPRESSION_ID,
   normalizeSequencesForExpressions,
   parseSequences,
   remapSequencesAfterExpressionDelete,
@@ -86,6 +87,21 @@ describe('editable avatar sequences', () => {
     )
 
     expect(normalized.steps[0].expressionId).toBe(initialExpressions[0].id)
+  })
+
+  it('preserves the system neutral target during normalization', () => {
+    const sequence = createInitialSequences()[0]
+    const [normalized] = normalizeSequencesForExpressions(
+      [
+        {
+          ...sequence,
+          steps: [{ ...sequence.steps[0], expressionId: NEUTRAL_EXPRESSION_ID }],
+        },
+      ],
+      []
+    )
+
+    expect(normalized.steps[0].expressionId).toBe(NEUTRAL_EXPRESSION_ID)
   })
 
   it('maps transition styles and durations to distinct spring dynamics', () => {

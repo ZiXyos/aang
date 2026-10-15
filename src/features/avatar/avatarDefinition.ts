@@ -13,6 +13,7 @@ import {
 } from '@bible-strong/avatar-core'
 import type { SurfaceType } from '@bible-strong/avatar-core'
 
+import { NEUTRAL_EXPRESSION_ID } from '../animation/sequences'
 import { applyAvatarEyeDefaults, type AvatarBehaviorLibrary, type StudioAvatar } from './avatars'
 import { defaultExpression } from './presets'
 import type { Expression } from './geometry'
@@ -124,7 +125,10 @@ export const createAvatarDefinition = ({
     )
     if (error) errors.push(error)
     sequence.steps.forEach((step, stepIndex) => {
-      if (!expressionKeyById.has(step.expressionId)) {
+      if (
+        step.expressionId !== NEUTRAL_EXPRESSION_ID &&
+        !expressionKeyById.has(step.expressionId)
+      ) {
         errors.push({
           path: `/studio/animations/${index}/steps/${stepIndex}/expressionId`,
           code: 'unresolved_expression_reference',
@@ -149,7 +153,10 @@ export const createAvatarDefinition = ({
       {
         playbackMode: sequence.playbackMode,
         steps: sequence.steps.map(step => ({
-          expression: expressionKeyById.get(step.expressionId)!,
+          expression:
+            step.expressionId === NEUTRAL_EXPRESSION_ID
+              ? 'neutral'
+              : expressionKeyById.get(step.expressionId)!,
           holdMs: step.holdMs,
           transitionMs: step.transitionMs,
           transition: step.transition,

@@ -1,4 +1,5 @@
 import {
+  defaultExpression,
   getStatePlaybackConfig,
   initialExpressions,
   stateGroups,
@@ -9,6 +10,7 @@ import type { Expression } from '../avatar/geometry'
 
 export type SequencePlaybackMode = 'loop' | 'once' | 'pingPong'
 export type SequenceTransition = 'spring' | 'smooth' | 'snappy'
+export const NEUTRAL_EXPRESSION_ID = defaultExpression.id
 
 export type SequenceStep = {
   id: string
@@ -170,13 +172,16 @@ export const normalizeSequencesForExpressions = (
   expressions: Expression[]
 ) => {
   const availableIds = new Set(expressions.map(expression => expression.id))
-  const fallbackId = expressions[0]?.id ?? initialExpressions[0].id
+  const fallbackId = expressions[0]?.id ?? NEUTRAL_EXPRESSION_ID
   return sequences.map(sequence => ({
     ...sequence,
     steps: (sequence.steps.length ? sequence.steps : [createSequenceStep(fallbackId)]).map(
       step => ({
         ...step,
-        expressionId: availableIds.has(step.expressionId) ? step.expressionId : fallbackId,
+        expressionId:
+          step.expressionId === NEUTRAL_EXPRESSION_ID || availableIds.has(step.expressionId)
+            ? step.expressionId
+            : fallbackId,
       })
     ),
   }))
@@ -184,6 +189,17 @@ export const normalizeSequencesForExpressions = (
 
 export const findExpressionIndex = (expressions: Expression[], expressionId: string) =>
   expressions.findIndex(expression => expression.id === expressionId)
+
+export const resolveSequenceExpression = (expressions: Expression[], expressionId: string) => {
+  if (expressionId === NEUTRAL_EXPRESSION_ID) {
+    return { expression: defaultExpression, index: null, neutral: true } as const
+  }
+  const index = findExpressionIndex(expressions, expressionId)
+  const expression = expressions[index]
+  return expression
+    ? ({ expression, index, neutral: false } as const)
+    : ({ expression: undefined, index: null, neutral: false } as const)
+}
 
 export const readSequenceClock = () => performance.now()
 

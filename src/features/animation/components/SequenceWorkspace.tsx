@@ -25,7 +25,8 @@ import { ControlSection, InspectorCard, PanelTitle } from '@/app/components/comm
 import { NumericField } from '@/app/components/controls'
 import {
   createSequenceStep,
-  findExpressionIndex,
+  NEUTRAL_EXPRESSION_ID,
+  resolveSequenceExpression,
   type AvatarSequence,
   type SequenceStep,
 } from '@/features/animation/sequences'
@@ -37,6 +38,7 @@ import {
 import { type BodyNode } from '@/features/avatar/body'
 import { ExpressionPreview } from '@/features/avatar/components/ExpressionWorkspace'
 import { type Expression } from '@/features/avatar/geometry'
+import { defaultExpression } from '@/features/avatar/presets'
 import { type SurfaceConfig } from '@/features/avatar/surfaces'
 export function SequenceWorkspace({
   editing,
@@ -268,9 +270,8 @@ export function SequenceWorkspace({
             {editing.draft.steps.length ? (
               <div className="sequence-timeline">
                 {editing.draft.steps.map((step, position) => {
-                  const expressionIndex = findExpressionIndex(expressions, step.expressionId)
-                  const preset = expressions[expressionIndex]
-                  if (!preset) return null
+                  const resolved = resolveSequenceExpression(expressions, step.expressionId)
+                  if (!resolved.expression) return null
                   const card = (
                     <Button
                       variant="outline"
@@ -280,11 +281,15 @@ export function SequenceWorkspace({
                         onSelectedStepChange(step.id)
                         onPreviewStep(step)
                       }}
-                      onDoubleClick={() => onEditExpression(expressionIndex, preset)}
+                      onDoubleClick={
+                        resolved.neutral
+                          ? undefined
+                          : () => onEditExpression(resolved.index, resolved.expression)
+                      }
                     >
                       <GripVertical className="sequence-grip" />
                       <ExpressionPreview
-                        expression={preset}
+                        expression={resolved.expression}
                         surface={surface}
                         bodyNodes={bodyNodes}
                         colors={colors}
@@ -292,7 +297,11 @@ export function SequenceWorkspace({
                         renderStyle={renderStyle}
                         id={`sequence-${editing.draft.id}-${step.id}`}
                       />
-                      <span>{String(expressionIndex).padStart(2, '0')}</span>
+                      <span>
+                        {resolved.neutral
+                          ? t('Apparence neutre')
+                          : String(resolved.index).padStart(2, '0')}
+                      </span>
                       <small>{position + 1}</small>
                     </Button>
                   )
@@ -318,16 +327,20 @@ export function SequenceWorkspace({
                         draggedStepId.current = null
                       }}
                     >
-                      <ContextMenu>
-                        <ContextMenuTrigger render={card} />
-                        <ContextMenuContent>
-                          <ContextMenuItem
-                            onClick={() => onEditExpression(expressionIndex, preset)}
-                          >
-                            <Pencil /> {t('Modifier')}
-                          </ContextMenuItem>
-                        </ContextMenuContent>
-                      </ContextMenu>
+                      {resolved.neutral ? (
+                        card
+                      ) : (
+                        <ContextMenu>
+                          <ContextMenuTrigger render={card} />
+                          <ContextMenuContent>
+                            <ContextMenuItem
+                              onClick={() => onEditExpression(resolved.index, resolved.expression)}
+                            >
+                              <Pencil /> {t('Modifier')}
+                            </ContextMenuItem>
+                          </ContextMenuContent>
+                        </ContextMenu>
+                      )}
                     </motion.div>
                   )
                 })}
@@ -408,6 +421,28 @@ export function SequenceWorkspace({
               subtitle="Sélectionne un preset pour l’ajouter à la fin de la timeline."
             />
             <div className="expression-grid sequence-expression-library">
+              <Button
+                className="expression-card"
+                variant="outline"
+                type="button"
+                onClick={() => {
+                  const step = createSequenceStep(NEUTRAL_EXPRESSION_ID)
+                  onChange({ ...editing.draft, steps: [...editing.draft.steps, step] })
+                  onSelectedStepChange(step.id)
+                  onPreviewStep(step)
+                }}
+              >
+                <ExpressionPreview
+                  expression={defaultExpression}
+                  surface={surface}
+                  bodyNodes={bodyNodes}
+                  colors={colors}
+                  avatarEyes={avatarEyes}
+                  renderStyle={renderStyle}
+                  id="sequence-library-neutral"
+                />
+                <span>{t('Apparence neutre')}</span>
+              </Button>
               {expressions.map((preset, index) => (
                 <Button
                   className="expression-card"

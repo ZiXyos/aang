@@ -631,15 +631,6 @@ input {
   min-height: 44px;
   box-shadow: 0 12px 30px rgb(23 25 29 / 18%);
 }
-.runtime-copy-status {
-  margin: 0;
-  color: var(--muted-foreground);
-  font-size: 11px;
-  text-align: center;
-}
-.runtime-copy-status[role='alert'] {
-  color: var(--destructive);
-}
 .runtime-quick-start-card,
 .runtime-export-card {
   display: grid;
@@ -668,12 +659,17 @@ input {
   font-size: 15px;
   letter-spacing: -0.015em;
 }
-.runtime-quick-start-heading > button {
-  flex: none;
+.runtime-quick-start-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+}
+.runtime-quick-start-actions > button {
+  min-width: 0;
   color: #4168d5;
   font-size: 11px;
 }
-.runtime-quick-start-heading > button > svg {
+.runtime-quick-start-actions > button > svg {
   width: 14px;
   height: 14px;
 }
@@ -3711,7 +3707,10 @@ p {
     align-items: flex-start;
     flex-direction: column;
   }
-  .runtime-quick-start-heading > button {
+  .runtime-quick-start-actions {
+    justify-content: flex-start;
+  }
+  .runtime-quick-start-actions > button {
     padding-inline: 0;
   }
   html,

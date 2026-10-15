@@ -2,6 +2,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Camera,
+  Check,
   ChevronDown,
   ChevronUp,
   Copy,
@@ -20,7 +21,7 @@ import {
   Upload,
 } from 'lucide-react'
 import { AnimatePresence, animate, motion, useMotionValue, useTransform } from 'motion/react'
-import { type CSSProperties, useLayoutEffect, useRef, useState } from 'react'
+import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import {
   Accordion,
@@ -58,9 +59,14 @@ import {
   StatePlayer,
 } from '@/app/components/common'
 import { ColorField, LinkButton, NumericField } from '@/app/components/controls'
-import { formatSeconds, type Side, type SnapshotFormat } from '@/app/studio-utils'
+import {
+  COPY_FEEDBACK_DURATION_MS,
+  formatSeconds,
+  type Side,
+  type SnapshotFormat,
+} from '@/app/studio-utils'
 import { SequenceWorkspace } from '@/features/animation/components/SequenceWorkspace'
-import { findExpressionIndex, groupSequences } from '@/features/animation/sequences'
+import { groupSequences, resolveSequenceExpression } from '@/features/animation/sequences'
 import {
   defaultAvatarEyes,
   defaultPixelRenderStyle,
@@ -77,7 +83,10 @@ import { type SnapshotBackground } from '@/features/export/snapshotExporter'
 import { AvatarPage } from '@/features/studio/components/AvatarDrawer'
 import { BodyConstructionAccordion } from '@/features/studio/components/BodyConstructionAccordion'
 import { HighlightedRuntimeCode } from '@/features/studio/components/HighlightedRuntimeCode'
-import { RuntimeGuideDialog } from '@/features/studio/components/RuntimeGuideDialog'
+import {
+  buildRuntimeGuideText,
+  RuntimeGuideDialog,
+} from '@/features/studio/components/RuntimeGuideDialog'
 import { RuntimePreviewDialog } from '@/features/studio/components/RuntimePreviewDialog'
 import { StudioIdentity } from '@/features/studio/components/StudioIdentity'
 import type { StudioController } from '@/features/studio/useStudioController'
@@ -412,6 +421,15 @@ function PoseControls({ controller }: { controller: StudioController }) {
 export function StudioInspector({ controller }: { controller: StudioController }) {
   const [runtimePreviewOpen, setRuntimePreviewOpen] = useState(false)
   const [guideOpen, setGuideOpen] = useState(false)
+  const [guideCopyFeedback, setGuideCopyFeedback] = useState<{
+    format: 'react' | 'javascript'
+    status: 'success' | 'error'
+  } | null>(null)
+  useEffect(() => {
+    if (!guideCopyFeedback) return
+    const timeout = window.setTimeout(() => setGuideCopyFeedback(null), COPY_FEEDBACK_DURATION_MS)
+    return () => window.clearTimeout(timeout)
+  }, [guideCopyFeedback])
   const [exportAnimationsOpen, setExportAnimationsOpen] = useState(false)
   const {
     activateAvatar,
@@ -556,9 +574,30 @@ export function StudioInspector({ controller }: { controller: StudioController }
     updateWireVisibility,
     workspaceBackButtonRef,
   } = controller
+
+  const copyRuntimeGuide = async () => {
+    if (!navigator.clipboard) {
+      setGuideCopyFeedback({ format: exportFormat, status: 'error' })
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(
+        buildRuntimeGuideText({
+          animationKey: runtimePreviewAnimation,
+          integration: exportFormat,
+          t,
+        })
+      )
+      setGuideCopyFeedback({ format: exportFormat, status: 'success' })
+    } catch {
+      setGuideCopyFeedback({ format: exportFormat, status: 'error' })
+    }
+  }
   const runtimePreviewAnimation = runtimeDefinitionResult.ok
     ? runtimeDefinitionResult.value.animationOrder[0]
     : undefined
+  const guideCopyStatus =
+    guideCopyFeedback?.format === exportFormat ? guideCopyFeedback.status : 'idle'
   const updateSnapshotComposition = (patch: Partial<typeof snapshotComposition>) =>
     setSnapshotComposition(current => ({ ...current, ...patch }))
   const pixelRenderStyle =
@@ -657,9 +696,10 @@ export function StudioInspector({ controller }: { controller: StudioController }
                 setSequenceEditing(current => (current ? { ...current, draft } : current))
               }
               onPreviewStep={step => {
-                const expressionIndex = findExpressionIndex(expressions, step.expressionId)
-                const preset = expressions[expressionIndex]
-                if (preset) transitionToExpression(preset, expressionIndex, step)
+                const resolved = resolveSequenceExpression(expressions, step.expressionId)
+                if (resolved.expression) {
+                  transitionToExpression(resolved.expression, resolved.index, step)
+                }
               }}
               onEditExpression={openExpressionEditor}
               onPlay={() => launchSequence(sequenceEditing.draft, false, false)}
@@ -1233,7 +1273,8 @@ export function StudioInspector({ controller }: { controller: StudioController }
                           {group.sequences.map(sequence => {
                             const firstStep = sequence.steps[0]
                             const firstExpression = firstStep
-                              ? expressionById.get(firstStep.expressionId)
+                              ? resolveSequenceExpression(expressions, firstStep.expressionId)
+                                  .expression
                               : undefined
                             const card = (
                               <Button
@@ -1713,7 +1754,8 @@ export function StudioInspector({ controller }: { controller: StudioController }
                           {sequences.map(animation => {
                             const firstStep = animation.steps[0]
                             const firstExpression = firstStep
-                              ? expressionById.get(firstStep.expressionId)
+                              ? resolveSequenceExpression(expressions, firstStep.expressionId)
+                                  .expression
                               : undefined
                             return (
                               <Button
@@ -1783,8 +1825,24 @@ export function StudioInspector({ controller }: { controller: StudioController }
                     <div className="runtime-quick-start-heading">
                       <div>
                         <p className="eyebrow">{t('Démarrage rapide')}</p>
-                        <h2>{t('Utiliser cet avatar')}</h2>
                       </div>
+                    </div>
+                    <div className="runtime-quick-start-actions">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        aria-label={
+                          guideCopyStatus === 'success'
+                            ? t('Guide d’utilisation copié dans le presse-papiers.')
+                            : guideCopyStatus === 'error'
+                              ? t('Impossible de copier le guide d’utilisation.')
+                              : undefined
+                        }
+                        onClick={() => void copyRuntimeGuide()}
+                      >
+                        {guideCopyStatus === 'success' ? <Check /> : <Copy />}
+                        {t('Copier les instructions pour l’IA')}
+                      </Button>
                       <Button type="button" variant="ghost" onClick={() => setGuideOpen(true)}>
                         {t('Voir le guide complet')}
                         <ArrowRight />
@@ -1872,27 +1930,21 @@ export function StudioInspector({ controller }: { controller: StudioController }
                           type="button"
                           variant="outline"
                           disabled={!runtimeDefinitionResult.ok}
+                          aria-label={
+                            runtimeCopyStatus === 'success'
+                              ? t('JSON runtime copié dans le presse-papiers.')
+                              : runtimeCopyStatus === 'error'
+                                ? t('Impossible de copier le JSON runtime.')
+                                : undefined
+                          }
                           onClick={() => void copyAvatarRuntimeDefinition()}
                         >
-                          <Copy />
+                          {runtimeCopyStatus === 'success' ? <Check /> : <Copy />}
                           {t('Copier le JSON')}
                         </Button>
                       </div>
                     </div>
                   </InspectorCard>
-                  {runtimeCopyStatus !== 'idle' && (
-                    <p
-                      className="runtime-copy-status"
-                      role={runtimeCopyStatus === 'error' ? 'alert' : 'status'}
-                      aria-live={runtimeCopyStatus === 'error' ? 'assertive' : 'polite'}
-                    >
-                      {t(
-                        runtimeCopyStatus === 'success'
-                          ? 'JSON runtime copié dans le presse-papiers.'
-                          : 'Impossible de copier le JSON runtime.'
-                      )}
-                    </p>
-                  )}
                   <RuntimePreviewDialog
                     definition={runtimeDefinitionResult.ok ? runtimeDefinitionResult.value : null}
                     initialAnimation={runtimePreviewAnimation}
@@ -2015,20 +2067,21 @@ export function StudioInspector({ controller }: { controller: StudioController }
             <div className="state-playback-bar">
               <div className="state-playback-timeline">
                 {activeSequence.steps.map((step, position) => {
-                  const expressionIndex = findExpressionIndex(expressions, step.expressionId)
-                  const preset = expressions[expressionIndex]
-                  if (!preset) return null
+                  const resolved = resolveSequenceExpression(expressions, step.expressionId)
+                  if (!resolved.expression) return null
                   return (
                     <Button
                       className="state-playback-step"
                       variant="outline"
                       type="button"
                       key={step.id}
-                      aria-pressed={activeExpression === expressionIndex}
-                      onClick={() => transitionToExpression(preset, expressionIndex, step)}
+                      aria-pressed={activeExpression === resolved.index}
+                      onClick={() =>
+                        transitionToExpression(resolved.expression, resolved.index, step)
+                      }
                     >
                       <ExpressionPreview
-                        expression={preset}
+                        expression={resolved.expression}
                         surface={surface}
                         bodyNodes={bodyNodes}
                         colors={activeAvatar.colors}

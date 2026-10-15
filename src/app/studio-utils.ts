@@ -44,6 +44,7 @@ export type Highlight = 'head' | 'left' | 'right' | 'both' | null
 export const RETARGET_BLEND_MS = 120
 export const INSPECTOR_FRAME_MS = 1000 / 24
 export const AMBIENT_FRAME_MS = 1000 / 30
+export const COPY_FEEDBACK_DURATION_MS = 2000
 export const createExpressionId = () => `expression-${crypto.randomUUID()}`
 export const emptyBodyNodes: BodyNode[] = []
 const previewGeometryCache = new WeakMap<

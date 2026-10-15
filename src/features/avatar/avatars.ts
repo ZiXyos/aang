@@ -250,8 +250,8 @@ const parseAvatarBehavior = (
 ): AvatarBehaviorLibrary | undefined => {
   if (!value || typeof value !== 'object') return undefined
   const candidate = value as Partial<AvatarBehaviorLibrary>
-  if (!Array.isArray(candidate.expressions) || !candidate.expressions.length) return undefined
-  const expressions = parseExpressions(candidate.expressions)
+  if (!Array.isArray(candidate.expressions)) return undefined
+  const expressions = candidate.expressions.length ? parseExpressions(candidate.expressions) : []
   return restoreLegacyBehaviorSemanticKeys(
     {
       expressions,
