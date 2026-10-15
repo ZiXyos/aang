@@ -448,7 +448,6 @@ input {
 .is-pixel-rendered .avatar-head,
 .is-pixel-rendered .avatar-eye {
   fill: transparent;
-  transition: none;
 }
 .is-pixel-rendered .avatar-head.cyan-outline,
 .is-pixel-rendered .avatar-eye.cyan-outline {
@@ -1175,19 +1174,11 @@ input {
   grid-column: 1 / -1;
   min-height: 42px;
 }
-.avatar-head,
 .preview-head {
   fill: var(--avatar-body-color, #5b7fe5);
 }
 .preview-eye {
   fill: var(--avatar-eye-color, #111316);
-}
-.avatar-head,
-.avatar-eye,
-.wire {
-  transition:
-    fill 420ms cubic-bezier(0.22, 1, 0.36, 1),
-    stroke 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .avatar-eye {
   cursor: pointer;
